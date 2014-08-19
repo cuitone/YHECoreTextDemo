@@ -18,19 +18,19 @@
 
 @property(nonatomic) NSTextAlignment textAlignment;    // default is NSLeftTextAlignment
 
-@property(nonatomic) NSRange selectedRange;
-
-@property(nonatomic,getter=isEditable) BOOL editable;
-
 @property(nonatomic,getter = isEditing) BOOL editing;
-
+/**
+ *  选择的文本区域，初始为0，如果未选中文本，则显示光标的位置，长度为0
+ */
+@property (nonatomic,assign) NSRange selectedTextRange;
+/**
+ *  在输入非英文时会有占位用于替换的文本，显示于选定的区域
+ */
 @property (nonatomic,assign) NSRange markedTextRange;
 
 - (CGRect)firstRectForRange:(NSRange)range;
 
 - (CGRect)caretRectForPosition:(int )index;
-
-- (NSArray *)selectionRectsForRange:(UITextRange *)range;
 
 - (NSInteger)closestIndexToPoint:(CGPoint)point;
 

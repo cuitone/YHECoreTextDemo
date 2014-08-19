@@ -23,13 +23,20 @@
 
 @property (nonatomic,strong) UITextInputStringTokenizer *tokenizer;
 
+@property (nonatomic,strong) YHETextContainerView *textContainerView;
+
+
 @end
 
 @implementation YHETextView
 
 @synthesize inputDelegate = _inputDelegate;
-@synthesize indicatorStyle = _indicatorStyle;
-@synthesize markedTextStyle = _markedTextStyle;
+
+@synthesize textContainerView = _textContainerView;
+
+@synthesize text = _text;
+
+@synthesize editable = _editable;
 
 - (id)initWithFrame:(CGRect)frame
 {
@@ -44,10 +51,10 @@
 - (void)initView
 {
     [self setBackgroundColor:[UIColor greenColor]];
-    _textContainerView = [[YHETextContainerView alloc] initWithFrame:CGRectMake(0, 0, self.bounds.size.width, 100)];
+    _textContainerView = [[YHETextContainerView alloc] initWithFrame:CGRectMake(0, 0, self.bounds.size.width, 150)];
     [self addSubview:_textContainerView];
     [_textContainerView setUserInteractionEnabled:NO];
-//    self.contentSize = _textContainerView.bounds.size;
+    self.userInteractionEnabled = YES;
     
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tap:)];
     tap.numberOfTapsRequired = 1;
@@ -55,9 +62,10 @@
     tap.delegate = self;
     [self addGestureRecognizer:tap];
     
+    
+    self.text = @"";
     _tokenizer = [[UITextInputStringTokenizer alloc] initWithTextInput:self];
     _mutableText = [[NSMutableString alloc] init];
-    
 }
 
 - (BOOL)canBecomeFirstResponder
@@ -79,6 +87,7 @@
 }
 */
 
+
 #pragma makr - Actions
 
 - (void)tap:(UITapGestureRecognizer *)tap
@@ -87,13 +96,14 @@
         [self.inputDelegate selectionWillChange:self];
         
         NSInteger index = [_textContainerView closestIndexToPoint:[tap locationInView:_textContainerView]];
-        [_textContainerView setSelectedRange:NSMakeRange(index, 0)];
+        [_textContainerView setSelectedTextRange:NSMakeRange(index, 0)];
         [_textContainerView setEditing:YES];
+        
         [self.inputDelegate selectionDidChange:self];
     }
     else
     {
-    
+        _textContainerView.editing = YES;
         [self becomeFirstResponder];
     }
 }
@@ -103,9 +113,15 @@
 - (void)setText:(NSString *)text
 {
     if (_text != text) {
-        _text = text;
-        _textContainerView.text = _text;
+        _text = [text copy];
+        [_mutableText replaceCharactersInRange:NSMakeRange(0, _mutableText.length) withString:_text];
+        _textContainerView.text = text;
     }
+}
+
+- (NSString *)text
+{
+    return _mutableText;
 }
 
 - (void)setFont:(UIFont *)font
@@ -124,11 +140,23 @@
     }
 }
 
+- (void)setEditable:(BOOL)editable
+{
+    _editable = editable;
+}
+
+- (BOOL)isEditable
+{
+    return YES;
+}
+
 #pragma mark - Gesture Delegate
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch
 {
     return (touch.view == self);
 }
+
+
 
 #pragma mark - UITextInput
 
@@ -144,21 +172,37 @@
 - (void)replaceRange:(UITextRange *)range withText:(NSString *)text
 {
     YHETextRange *textRange = (YHETextRange *)range;
-    NSRange selectedRange = _textContainerView.selectedRange;
+    NSRange selectedRange = _textContainerView.selectedTextRange;
+    //如果替换文本在选择光标的前面，重新计算新的选择位置使光标保持在最后面
     if ((textRange.range.location+textRange.range.length) <= selectedRange.location) {
+        //比如选择了三个字符，替换成1个字符，那么textRange.range.length - text.length=2,选择的起始位置向前移动了两个，
         selectedRange.location -= (textRange.range.length - text.length);
     } else
     {
         
     }
     
-    [_mutableText replaceCharactersInRange:selectedRange withString:text];
+    [_mutableText replaceCharactersInRange:textRange.range withString:text];
     
-    _text = _mutableText;
+    _text = [_mutableText copy];
     _textContainerView.text = _text;
-    _textContainerView.selectedRange = selectedRange;
+    _textContainerView.selectedTextRange = selectedRange;
+    self.selectedRange = _textContainerView.selectedTextRange;
 }
 
+
+
+- (UITextRange *)selectedTextRange
+{
+    return [YHETextRange indexedRangeWithRange:_textContainerView.selectedTextRange];
+}
+
+
+- (void)setSelectedTextRange:(UITextRange *)range
+{
+    YHETextRange *indexedRange = (YHETextRange *)range;
+    _textContainerView.selectedTextRange = indexedRange.range;
+}
 
 
 #pragma mark - Marked Text Range
@@ -174,11 +218,49 @@
 
 - (void)setMarkedText:(NSString *)markedText selectedRange:(NSRange)selectedRange
 {
-//    NSRange selectedRange = _textContainerView.selectedRange;
+    NSRange selectedTextRange = _textContainerView.selectedTextRange;
+    NSRange markedTextRange = _textContainerView.markedTextRange;
+    
+    if (markedTextRange.location != NSNotFound) {
+        if (!markedText) {markedText = @"";}
+        
+        [_mutableText replaceCharactersInRange:markedTextRange withString:markedText];
+        markedTextRange.length = markedText.length;
+        
+    }
+    
+    else if(selectedTextRange.length>0)
+    {
+        [_mutableText replaceCharactersInRange:selectedRange withString:markedText];
+        markedTextRange.location = selectedTextRange.location;
+        markedTextRange.length = markedText.length;
+    }
+    else
+    {
+        [_mutableText insertString:markedText atIndex:selectedRange.location];
+        markedTextRange.location = selectedTextRange.location;
+        markedTextRange.length = markedText.length;
+    }
+    
+    selectedTextRange = NSMakeRange(selectedRange.location+markedTextRange.location, selectedRange.length);
+    
+    _text = [_mutableText copy];
+    _textContainerView.text = _text;
+    _textContainerView.selectedTextRange = selectedTextRange;
+    _textContainerView.markedTextRange = markedTextRange;
+    self.selectedRange = _textContainerView.selectedTextRange;
+    
+    
 }
 
 - (void)unmarkText
 {
+    NSRange markedTextRange = _textContainerView.markedTextRange;
+    if (markedTextRange.location == NSNotFound) {
+        return;
+    }
+    markedTextRange.location = NSNotFound;
+    _textContainerView.markedTextRange = markedTextRange;
     
 }
 
@@ -202,7 +284,7 @@
 {
     YHETextPosition *aFromPosition = (YHETextPosition *)fromPosition;
     YHETextPosition *aToPosition = (YHETextPosition *)toPosition;
-    NSRange range = NSMakeRange(MIN(aFromPosition.index, aToPosition.index), ABS(aFromPosition.index-aToPosition.index));
+    NSRange range = NSMakeRange(MIN(aFromPosition.index, aToPosition.index), ABS(aToPosition.index-aFromPosition.index));
     
     return [YHETextRange indexedRangeWithRange:range];
     
@@ -268,6 +350,53 @@
 
 #pragma mark - UITextInput  Writing direction
 
+#pragma mark UITextInput - Text Layout, writing direction and position related methods
+
+- (UITextPosition *)positionWithinRange:(UITextRange *)range farthestInDirection:(UITextLayoutDirection)direction
+{
+    // Note that this sample assumes left-to-right text direction.
+    YHETextRange *indexedRange = (YHETextRange *)range;
+    NSInteger position;
+ 
+    switch (direction) {
+        case UITextLayoutDirectionUp:
+        case UITextLayoutDirectionLeft:
+            position = indexedRange.range.location;
+            break;
+        case UITextLayoutDirectionRight:
+        case UITextLayoutDirectionDown:
+            position = indexedRange.range.location + indexedRange.range.length;
+            break;
+    }
+    
+	// Return text position using our UITextPosition implementation.
+	// Note that position is not currently checked against document range.
+    return [YHETextPosition positionWithIndex:position];
+}
+
+
+- (UITextRange *)characterRangeByExtendingPosition:(UITextPosition *)position inDirection:(UITextLayoutDirection)direction
+{
+    // Note that this sample assumes left-to-right text direction.
+    YHETextPosition *pos = (YHETextPosition *)position;
+    NSRange result;
+    
+    switch (direction) {
+        case UITextLayoutDirectionUp:
+        case UITextLayoutDirectionLeft:
+            result = NSMakeRange(pos.index - 1, 1);
+            break;
+        case UITextLayoutDirectionRight:
+        case UITextLayoutDirectionDown:
+            result = NSMakeRange(pos.index, 1);
+            break;
+    }
+    
+    // Return range using our UITextRange implementation.
+	// Note that range is not currently checked against document range.
+    return [YHETextRange indexedRangeWithRange:result];
+}
+
 - (UITextWritingDirection)baseWritingDirectionForPosition:(UITextPosition *)position inDirection:(UITextStorageDirection)direction
 {
     return UITextWritingDirectionRightToLeft;
@@ -292,7 +421,8 @@
 {
     YHETextPosition *aPosition = (YHETextPosition *)position;
     CGRect rect = [_textContainerView caretRectForPosition:aPosition.index];
-    return [self convertRect:rect fromView:_textContainerView];
+    rect = [self convertRect:rect fromView:_textContainerView];
+    return rect;
 }
 
 - (NSArray *)selectionRectsForRange:(UITextRange *)range
@@ -316,7 +446,6 @@
     return nil;
 }
 
-
 #pragma mark UITextInput - Returning Text Styling Information
 
 - (NSDictionary *)textStylingAtPosition:(UITextPosition *)position inDirection:(UITextStorageDirection)direction
@@ -334,28 +463,30 @@
 
 - (void)insertText:(NSString *)text
 {
-    NSRange selectedTextRange = _textContainerView.selectedRange;
+    NSRange selectedTextRange = _textContainerView.selectedTextRange;
     
     if (selectedTextRange.length > 0) {
         [_mutableText replaceCharactersInRange:selectedTextRange withString:text];
-        [_textContainerView setSelectedRange:NSMakeRange(_mutableText.length, 0)];
+        [_textContainerView setSelectedTextRange:NSMakeRange(_mutableText.length, 0)];
     }
     else
     {
-        [_mutableText insertString:text atIndex:_textContainerView.selectedRange.location];
+        [_mutableText insertString:text atIndex:selectedTextRange.location];
+        selectedTextRange.location += text.length;
     }
     
-    self.text = _mutableText;
-    self.selectedRange = _textContainerView.selectedRange;
+    self.text = [_mutableText copy];
+    _textContainerView.selectedTextRange = selectedTextRange;
+    self.selectedRange = _textContainerView.selectedTextRange;
     
 }
 
 - (void)deleteBackward
 {
-    NSRange selectedTextRange = _textContainerView.selectedRange;
+    NSRange selectedTextRange = _textContainerView.selectedTextRange;
     if (selectedTextRange.length>0) {
         [_mutableText deleteCharactersInRange:selectedTextRange];
-        [_textContainerView setSelectedRange:NSMakeRange(_mutableText.length, 0)];
+        selectedTextRange.length = 0;
     }
     else if(selectedTextRange.location >0)
     {
@@ -363,16 +494,17 @@
         selectedTextRange.length = 1;
         [_mutableText deleteCharactersInRange:selectedTextRange];
         selectedTextRange.length = 0;
-        [_textContainerView setSelectedRange:selectedTextRange];
     }
-    
-    self.text = _mutableText;
-    self.selectedRange = _textContainerView.selectedRange;
+//    else
+//    {
+//        
+//    }
+
+    _text = [_mutableText copy];
+    _textContainerView.text = _text;
+    _textContainerView.selectedTextRange = selectedTextRange;
+    self.selectedRange = _textContainerView.selectedTextRange;
 }
 
 @end
-
-
-
-
 

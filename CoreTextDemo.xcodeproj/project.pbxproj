@@ -23,12 +23,12 @@
 		A520080C199A02D200DAD449 /* CoreTextDemoTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A520080B199A02D200DAD449 /* CoreTextDemoTests.m */; };
 		A5200819199A067600DAD449 /* CoreText.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A5200818199A067600DAD449 /* CoreText.framework */; };
 		A569C309199A200A00F26838 /* homepage_lbs_icon@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = A569C308199A200A00F26838 /* homepage_lbs_icon@2x.png */; };
+		A59B1D6419A2FAB7009287D5 /* YHETextPosition.m in Sources */ = {isa = PBXBuildFile; fileRef = A59B1D6119A2FAB7009287D5 /* YHETextPosition.m */; };
+		A59B1D6519A2FAB7009287D5 /* YHETextRange.m in Sources */ = {isa = PBXBuildFile; fileRef = A59B1D6319A2FAB7009287D5 /* YHETextRange.m */; };
+		A59B1D6C19A2FB58009287D5 /* YHECaretView.m in Sources */ = {isa = PBXBuildFile; fileRef = A59B1D6919A2FB58009287D5 /* YHECaretView.m */; };
+		A59B1D6D19A2FB58009287D5 /* YHETextView.m in Sources */ = {isa = PBXBuildFile; fileRef = A59B1D6B19A2FB58009287D5 /* YHETextView.m */; };
+		A59B1D7019A2FF3D009287D5 /* YHETextContainerView.m in Sources */ = {isa = PBXBuildFile; fileRef = A59B1D6F19A2FF3D009287D5 /* YHETextContainerView.m */; };
 		A5B66C65199B507800CA1A2D /* TTTAttributedLabel.m in Sources */ = {isa = PBXBuildFile; fileRef = A5B66C64199B507800CA1A2D /* TTTAttributedLabel.m */; };
-		A5EDF765199CC22400928391 /* YHETextView.m in Sources */ = {isa = PBXBuildFile; fileRef = A5EDF764199CC22400928391 /* YHETextView.m */; };
-		A5FA42FC19A1DDE200092575 /* YHETextPosition.m in Sources */ = {isa = PBXBuildFile; fileRef = A5FA42FB19A1DDE200092575 /* YHETextPosition.m */; };
-		A5FA42FF19A1DFD100092575 /* YHETextRange.m in Sources */ = {isa = PBXBuildFile; fileRef = A5FA42FE19A1DFD100092575 /* YHETextRange.m */; };
-		A5FA430219A1EF3000092575 /* YHETextContainerView.m in Sources */ = {isa = PBXBuildFile; fileRef = A5FA430119A1EF3000092575 /* YHETextContainerView.m */; };
-		A5FA430519A205DF00092575 /* YHECaretView.m in Sources */ = {isa = PBXBuildFile; fileRef = A5FA430419A205DF00092575 /* YHECaretView.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -63,18 +63,18 @@
 		A520080B199A02D200DAD449 /* CoreTextDemoTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CoreTextDemoTests.m; sourceTree = "<group>"; };
 		A5200818199A067600DAD449 /* CoreText.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreText.framework; path = System/Library/Frameworks/CoreText.framework; sourceTree = SDKROOT; };
 		A569C308199A200A00F26838 /* homepage_lbs_icon@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "homepage_lbs_icon@2x.png"; sourceTree = "<group>"; };
+		A59B1D6019A2FAB7009287D5 /* YHETextPosition.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YHETextPosition.h; sourceTree = "<group>"; };
+		A59B1D6119A2FAB7009287D5 /* YHETextPosition.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YHETextPosition.m; sourceTree = "<group>"; };
+		A59B1D6219A2FAB7009287D5 /* YHETextRange.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YHETextRange.h; sourceTree = "<group>"; };
+		A59B1D6319A2FAB7009287D5 /* YHETextRange.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YHETextRange.m; sourceTree = "<group>"; };
+		A59B1D6819A2FB58009287D5 /* YHECaretView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YHECaretView.h; sourceTree = "<group>"; };
+		A59B1D6919A2FB58009287D5 /* YHECaretView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YHECaretView.m; sourceTree = "<group>"; };
+		A59B1D6A19A2FB58009287D5 /* YHETextView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YHETextView.h; sourceTree = "<group>"; };
+		A59B1D6B19A2FB58009287D5 /* YHETextView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YHETextView.m; sourceTree = "<group>"; };
+		A59B1D6E19A2FF3D009287D5 /* YHETextContainerView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YHETextContainerView.h; sourceTree = "<group>"; };
+		A59B1D6F19A2FF3D009287D5 /* YHETextContainerView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YHETextContainerView.m; sourceTree = "<group>"; };
 		A5B66C63199B507800CA1A2D /* TTTAttributedLabel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TTTAttributedLabel.h; sourceTree = "<group>"; };
 		A5B66C64199B507800CA1A2D /* TTTAttributedLabel.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TTTAttributedLabel.m; sourceTree = "<group>"; };
-		A5EDF763199CC22400928391 /* YHETextView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YHETextView.h; sourceTree = "<group>"; };
-		A5EDF764199CC22400928391 /* YHETextView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YHETextView.m; sourceTree = "<group>"; };
-		A5FA42FA19A1DDE200092575 /* YHETextPosition.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YHETextPosition.h; sourceTree = "<group>"; };
-		A5FA42FB19A1DDE200092575 /* YHETextPosition.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YHETextPosition.m; sourceTree = "<group>"; };
-		A5FA42FD19A1DFD100092575 /* YHETextRange.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YHETextRange.h; sourceTree = "<group>"; };
-		A5FA42FE19A1DFD100092575 /* YHETextRange.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YHETextRange.m; sourceTree = "<group>"; };
-		A5FA430019A1EF3000092575 /* YHETextContainerView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YHETextContainerView.h; sourceTree = "<group>"; };
-		A5FA430119A1EF3000092575 /* YHETextContainerView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YHETextContainerView.m; sourceTree = "<group>"; };
-		A5FA430319A205DF00092575 /* YHECaretView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YHECaretView.h; sourceTree = "<group>"; };
-		A5FA430419A205DF00092575 /* YHECaretView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YHECaretView.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -141,16 +141,17 @@
 				A52007F2199A02D200DAD449 /* Main.storyboard */,
 				A52007F5199A02D200DAD449 /* YHEViewController.h */,
 				A52007F6199A02D200DAD449 /* YHEViewController.m */,
-				A5EDF763199CC22400928391 /* YHETextView.h */,
-				A5EDF764199CC22400928391 /* YHETextView.m */,
-				A5FA430319A205DF00092575 /* YHECaretView.h */,
-				A5FA430419A205DF00092575 /* YHECaretView.m */,
-				A5FA430019A1EF3000092575 /* YHETextContainerView.h */,
-				A5FA430119A1EF3000092575 /* YHETextContainerView.m */,
-				A5FA42FA19A1DDE200092575 /* YHETextPosition.h */,
-				A5FA42FB19A1DDE200092575 /* YHETextPosition.m */,
-				A5FA42FD19A1DFD100092575 /* YHETextRange.h */,
-				A5FA42FE19A1DFD100092575 /* YHETextRange.m */,
+				A59B1D6819A2FB58009287D5 /* YHECaretView.h */,
+				A59B1D6919A2FB58009287D5 /* YHECaretView.m */,
+				A59B1D6A19A2FB58009287D5 /* YHETextView.h */,
+				A59B1D6B19A2FB58009287D5 /* YHETextView.m */,
+				A59B1D6019A2FAB7009287D5 /* YHETextPosition.h */,
+				A59B1D6119A2FAB7009287D5 /* YHETextPosition.m */,
+				A59B1D6219A2FAB7009287D5 /* YHETextRange.h */,
+				A59B1D6319A2FAB7009287D5 /* YHETextRange.m */,
+				A59B1D6E19A2FF3D009287D5 /* YHETextContainerView.h */,
+				A59B1D6F19A2FF3D009287D5 /* YHETextContainerView.m */,
+				A59B1D4719A2F68F009287D5 /* APLTextDemo */,
 				A5B66C62199B507800CA1A2D /* TTTAttributedLabel */,
 				A569C308199A200A00F26838 /* homepage_lbs_icon@2x.png */,
 				A52007F8199A02D200DAD449 /* Images.xcassets */,
@@ -186,6 +187,13 @@
 				A5200808199A02D200DAD449 /* InfoPlist.strings */,
 			);
 			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		A59B1D4719A2F68F009287D5 /* APLTextDemo */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = APLTextDemo;
 			sourceTree = "<group>";
 		};
 		A5B66C62199B507800CA1A2D /* TTTAttributedLabel */ = {
@@ -297,14 +305,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				A52007F7199A02D200DAD449 /* YHEViewController.m in Sources */,
-				A5EDF765199CC22400928391 /* YHETextView.m in Sources */,
-				A5FA430219A1EF3000092575 /* YHETextContainerView.m in Sources */,
-				A5FA42FC19A1DDE200092575 /* YHETextPosition.m in Sources */,
+				A59B1D6519A2FAB7009287D5 /* YHETextRange.m in Sources */,
+				A59B1D6D19A2FB58009287D5 /* YHETextView.m in Sources */,
 				A52007ED199A02D200DAD449 /* main.m in Sources */,
 				A52007F1199A02D200DAD449 /* YHEAppDelegate.m in Sources */,
+				A59B1D6419A2FAB7009287D5 /* YHETextPosition.m in Sources */,
+				A59B1D7019A2FF3D009287D5 /* YHETextContainerView.m in Sources */,
+				A59B1D6C19A2FB58009287D5 /* YHECaretView.m in Sources */,
 				A5B66C65199B507800CA1A2D /* TTTAttributedLabel.m in Sources */,
-				A5FA42FF19A1DFD100092575 /* YHETextRange.m in Sources */,
-				A5FA430519A205DF00092575 /* YHECaretView.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

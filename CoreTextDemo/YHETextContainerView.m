@@ -39,7 +39,9 @@
 - (void)initView
 {
     self.layer.geometryFlipped = YES;
-    _font = [UIFont systemFontOfSize:17.0f];
+    //注意要使用存取器
+    self.text = @"";
+    self.font = [UIFont systemFontOfSize:17.0f];
     [self setBackgroundColor:[UIColor whiteColor]];
     self.attributes = [[NSMutableDictionary alloc] init];
     [self.attributes setObject:_font forKey:NSFontAttributeName];
@@ -52,6 +54,21 @@
     CGContextRef context = UIGraphicsGetCurrentContext();
     
     CTFrameDraw(_ctFrame, context);
+}
+//绘制当前正在编辑文本的会话
+- (void)drawRangeAsMarkedRange:(NSRange)range
+{
+    if (!self.editing) {return;}
+    
+    if ( range.length == 0 || range.location == NSNotFound) { return; }
+    
+    
+    
+}
+//绘制选择的文本区域
+- (void)drawRangeAsSelectedRange:(NSRange)range
+{
+    if (!self.editing) {return;}
 }
 
 
@@ -77,8 +94,8 @@
         return;
     }
     
-    if (self.selectedRange.length == 0) {
-        self.caretView.frame = [self caretRectForPosition:self.selectedRange.location];
+    if (self.selectedTextRange.length == 0) {
+        self.caretView.frame = [self caretRectForPosition:self.selectedTextRange.location];
         if (self.caretView.superview == nil) {
             [self addSubview:self.caretView];
             [self setNeedsDisplay];
@@ -126,7 +143,7 @@
 
 - (void)setText:(NSString *)text
 {
-    _text = text;
+    _text = [text copy];
     [self textChanged];
 }
 
@@ -148,17 +165,12 @@
     }
 }
 
-- (void)setSelectedRange:(NSRange)selectedRange
+- (void)setSelectedTextRange:(NSRange)selectedRange
 {
-    _selectedRange = selectedRange;
-    [self textChanged];
-}
-
-- (void)setEditable:(BOOL)editable
-{
-    _editable = editable;
+    _selectedTextRange = selectedRange;
     [self selectionChanged];
 }
+
 
 - (void)setEditing:(BOOL)editing
 {
@@ -212,35 +224,40 @@
 	// Iterate over our CTLines, looking for the line that encompasses the given range.
     CFArrayRef lines = CTFrameGetLines(_ctFrame);
     CFIndex linesCount = CFArrayGetCount(lines);
+    CGPoint lineOrigins[linesCount];
+    CTFrameGetLineOrigins(_ctFrame, CFRangeMake(0, 0), lineOrigins);
     
-    
-    // Special case, insertion point at final position in text after newline.
+    // 特殊情况，插入点正好要开始新的一行
     if (index == self.text.length && [self.text characterAtIndex:(index - 1)] == '\n') {
         CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex(lines, linesCount -1);
         CFRange range = CTLineGetStringRange(line);
-        CGFloat xPos = CTLineGetOffsetForStringIndex(line, range.location, NULL);
-        CGPoint origin;
+
+        CGPoint origin = lineOrigins[linesCount-1];
         CGFloat ascent, descent;
         CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
         CTFrameGetLineOrigins(_ctFrame, CFRangeMake(linesCount - 1, 0), &origin);
 		// Place point after last line, including any font leading spacing if applicable.
         origin.y -= self.font.leading;
         
+        CGFloat xPos = CTLineGetOffsetForStringIndex(line, range.location, NULL);
         return CGRectMake(xPos, origin.y - descent, 3, ascent + descent);
     }
     
-    // Regular case, caret somewhere within our text content range.
+    // 正常情况，插入点在文本中间
     for (CFIndex linesIndex = 0; linesIndex < linesCount; linesIndex++) {
         CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex(lines, linesIndex);
         CFRange range = CTLineGetStringRange(line);
         NSInteger localIndex = index - range.location;
+        //计算索引是不是在本行
         if (localIndex >= 0 && localIndex <= range.length) {
+            
+            CGPoint origin = lineOrigins[linesIndex];
+            CGFloat ascent= 0.0f, descent = 0.0f;
+            CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
+            
 			// index is in the range for this line.
             CGFloat xPos = CTLineGetOffsetForStringIndex(line, index, NULL);
-            CGPoint origin;
-            CGFloat ascent, descent;
-            CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
-            CTFrameGetLineOrigins(_ctFrame, CFRangeMake(linesIndex, 0), &origin);
+
             
 			// Make a small "caret" rect at the index position.
             return CGRectMake(xPos, origin.y - descent, 3, ascent + descent);
