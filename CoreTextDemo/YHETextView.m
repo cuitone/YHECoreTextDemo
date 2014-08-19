@@ -62,6 +62,11 @@
     tap.delegate = self;
     [self addGestureRecognizer:tap];
     
+    UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)];
+    longPress.numberOfTapsRequired = 1;
+    longPress.numberOfTouchesRequired = 1;
+    longPress.delegate = self;
+    [self addGestureRecognizer:longPress];
     
     self.text = @"";
     _tokenizer = [[UITextInputStringTokenizer alloc] initWithTextInput:self];
@@ -88,7 +93,7 @@
 */
 
 
-#pragma makr - Actions
+#pragma makr - Gesture Recognizer
 
 - (void)tap:(UITapGestureRecognizer *)tap
 {
@@ -96,7 +101,9 @@
         [self.inputDelegate selectionWillChange:self];
         
         NSInteger index = [_textContainerView closestIndexToPoint:[tap locationInView:_textContainerView]];
-        [_textContainerView setSelectedTextRange:NSMakeRange(index, 0)];
+        //点击屏幕后使markedTextRange.location＝NSNotFound,这样输入汉字的时候就不会从起始点开始了
+        _textContainerView.markedTextRange = NSMakeRange(NSNotFound, 0);
+        _textContainerView.selectedTextRange = NSMakeRange(index, 0);
         [_textContainerView setEditing:YES];
         
         [self.inputDelegate selectionDidChange:self];
@@ -106,6 +113,11 @@
         _textContainerView.editing = YES;
         [self becomeFirstResponder];
     }
+}
+
+- (void)longPress:(UILongPressGestureRecognizer *)longPress
+{
+    
 }
 
 #pragma mark - 属性存取器重写
@@ -464,8 +476,16 @@
 - (void)insertText:(NSString *)text
 {
     NSRange selectedTextRange = _textContainerView.selectedTextRange;
+    NSRange markedTextRange = _textContainerView.markedTextRange;
     
-    if (selectedTextRange.length > 0) {
+    
+    if (markedTextRange.location != NSNotFound) {
+        [_mutableText replaceCharactersInRange:markedTextRange withString:text];
+        selectedTextRange.location = markedTextRange.location+text.length;
+        selectedTextRange.length = 0;
+        markedTextRange = NSMakeRange(NSNotFound, 0);
+    }
+    else if (selectedTextRange.length > 0) {
         [_mutableText replaceCharactersInRange:selectedTextRange withString:text];
         [_textContainerView setSelectedTextRange:NSMakeRange(_mutableText.length, 0)];
     }
@@ -477,6 +497,7 @@
     
     self.text = [_mutableText copy];
     _textContainerView.selectedTextRange = selectedTextRange;
+    _textContainerView.markedTextRange = markedTextRange;
     self.selectedRange = _textContainerView.selectedTextRange;
     
 }
@@ -484,7 +505,14 @@
 - (void)deleteBackward
 {
     NSRange selectedTextRange = _textContainerView.selectedTextRange;
-    if (selectedTextRange.length>0) {
+    NSRange markedTextRange = _textContainerView.markedTextRange;
+    
+    if (markedTextRange.location != NSNotFound) {
+        [_mutableText deleteCharactersInRange:markedTextRange];
+        selectedTextRange = NSMakeRange(markedTextRange.location, 0);
+        markedTextRange = NSMakeRange(NSNotFound, 0);
+    }
+    else if (selectedTextRange.length>0) {
         [_mutableText deleteCharactersInRange:selectedTextRange];
         selectedTextRange.length = 0;
     }
@@ -495,14 +523,12 @@
         [_mutableText deleteCharactersInRange:selectedTextRange];
         selectedTextRange.length = 0;
     }
-//    else
-//    {
-//        
-//    }
+
 
     _text = [_mutableText copy];
     _textContainerView.text = _text;
     _textContainerView.selectedTextRange = selectedTextRange;
+    _textContainerView.markedTextRange = markedTextRange;
     self.selectedRange = _textContainerView.selectedTextRange;
 }
 

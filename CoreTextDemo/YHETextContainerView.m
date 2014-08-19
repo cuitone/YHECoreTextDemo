@@ -42,33 +42,71 @@
     //注意要使用存取器
     self.text = @"";
     self.font = [UIFont systemFontOfSize:17.0f];
-    [self setBackgroundColor:[UIColor whiteColor]];
+    [self setBackgroundColor:[UIColor clearColor]];
+    self.markColor = [UIColor blueColor];
     self.attributes = [[NSMutableDictionary alloc] init];
     [self.attributes setObject:_font forKey:NSFontAttributeName];
     _caretView = [[YHECaretView alloc] initWithFrame:CGRectZero];
-    
 }
 
 - (void)drawRect:(CGRect)rect
 {
     CGContextRef context = UIGraphicsGetCurrentContext();
-    
+    [self drawRangeAsSelectedOrMarkedRange:_markedTextRange];
+    [self drawRangeAsSelectedOrMarkedRange:_selectedTextRange];
     CTFrameDraw(_ctFrame, context);
 }
-//绘制当前正在编辑文本的会话
-- (void)drawRangeAsMarkedRange:(NSRange)range
+//绘制当前正在编辑文本的会话或绘制选择的文本区域
+- (void)drawRangeAsSelectedOrMarkedRange:(NSRange)range
 {
     if (!self.editing) {return;}
     
     if ( range.length == 0 || range.location == NSNotFound) { return; }
     
+    [self.markColor setFill];
     
+    CFArrayRef lines = CTFrameGetLines(_ctFrame);
+    int lineCount = CFArrayGetCount(lines);
+    CGPoint lineOrigins[lineCount];
+    CTFrameGetLineOrigins(_ctFrame, CFRangeMake(0, 0), lineOrigins);
+    for (int i = 0; i< CFArrayGetCount(lines); i++) {
+        CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex(lines, i);
+        CFRange lineRange = CTLineGetStringRange(line);
+        NSRange interSection = [self RangeIntersection:NSMakeRange(lineRange.location, lineRange.length) WithSecond:range];
+        
+        if (interSection.location != NSNotFound && interSection.length >0) {
+            CGFloat xStart = CTLineGetOffsetForStringIndex(line, interSection.location, NULL);
+            CGFloat xEnd = CTLineGetOffsetForStringIndex(line, interSection.location + interSection.length, NULL);
+            
+            CGPoint lineOrigin = lineOrigins[i];
+            CGFloat ascent,descent;
+            CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
+            
+            CGRect markedRect = CGRectMake(xStart, lineOrigin.y-descent, xEnd-xStart, ascent + descent);
+            UIRectFill(markedRect);
+        }
+    }
     
 }
-//绘制选择的文本区域
-- (void)drawRangeAsSelectedRange:(NSRange)range
+
+- (NSRange)RangeIntersection:(NSRange)first WithSecond:(NSRange)second
 {
-    if (!self.editing) {return;}
+    NSRange result = NSMakeRange(NSNotFound, 0);
+    //总共应该有5种情况,因为关于中心对称，所以可以更换两个位置取交集
+    if (first.location>second.location) {
+        NSRange tmp = first;
+        first = second;
+        second = tmp;
+    }
+    //交换之后始终second.location在first.location的后面
+    if (second.location < first.location + first.length) {
+        result.location = second.location;
+        NSUInteger end = MIN(first.location+first.length, second.location + second.length);
+        result.length = end-result.location;
+    }
+    
+    return result;
+    
 }
 
 

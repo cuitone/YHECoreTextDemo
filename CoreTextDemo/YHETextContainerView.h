@@ -19,6 +19,8 @@
 @property(nonatomic) NSTextAlignment textAlignment;    // default is NSLeftTextAlignment
 
 @property(nonatomic,getter = isEditing) BOOL editing;
+
+@property (nonatomic,strong) UIColor *markColor;
 /**
  *  选择的文本区域，初始为0，如果未选中文本，则显示光标的位置，长度为0
  */
@@ -33,5 +35,6 @@
 - (CGRect)caretRectForPosition:(int )index;
 
 - (NSInteger)closestIndexToPoint:(CGPoint)point;
+
 
 @end

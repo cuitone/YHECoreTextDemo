@@ -24,7 +24,7 @@ static const NSTimeInterval BlinkRate = 0.5;
     self = [super initWithFrame:frame];
     if (self) {
         // Initialization code
-        self.backgroundColor = [UIColor redColor];
+        self.backgroundColor = [UIColor blueColor];
     }
     return self;
 }
