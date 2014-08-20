@@ -7,22 +7,13 @@
 //
 
 #import "YHETextContainerView.h"
-#import <CoreText/CoreText.h>
 #import "YHECaretView.h"
 
 #pragma mark - YHETextContainerView
 
-@interface YHETextContainerView ()
-{
-    CTFramesetterRef _ctFrameSetter;
-    CTFrameRef _ctFrame;
-}
+NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
 
-@property (nonatomic,strong) NSMutableDictionary *attributes;
 
-@property (nonatomic,strong) YHECaretView *caretView;
-
-@end
 
 @implementation YHETextContainerView
 
@@ -47,118 +38,7 @@
     self.attributes = [[NSMutableDictionary alloc] init];
     [self.attributes setObject:_font forKey:NSFontAttributeName];
     _caretView = [[YHECaretView alloc] initWithFrame:CGRectZero];
-}
-
-- (void)drawRect:(CGRect)rect
-{
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    [self drawRangeAsSelectedOrMarkedRange:_markedTextRange];
-    [self drawRangeAsSelectedOrMarkedRange:_selectedTextRange];
-    CTFrameDraw(_ctFrame, context);
-}
-//绘制当前正在编辑文本的会话或绘制选择的文本区域
-- (void)drawRangeAsSelectedOrMarkedRange:(NSRange)range
-{
-    if (!self.editing) {return;}
-    
-    if ( range.length == 0 || range.location == NSNotFound) { return; }
-    
-    [self.markColor setFill];
-    
-    CFArrayRef lines = CTFrameGetLines(_ctFrame);
-    int lineCount = CFArrayGetCount(lines);
-    CGPoint lineOrigins[lineCount];
-    CTFrameGetLineOrigins(_ctFrame, CFRangeMake(0, 0), lineOrigins);
-    for (int i = 0; i< CFArrayGetCount(lines); i++) {
-        CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex(lines, i);
-        CFRange lineRange = CTLineGetStringRange(line);
-        NSRange interSection = [self RangeIntersection:NSMakeRange(lineRange.location, lineRange.length) WithSecond:range];
-        
-        if (interSection.location != NSNotFound && interSection.length >0) {
-            CGFloat xStart = CTLineGetOffsetForStringIndex(line, interSection.location, NULL);
-            CGFloat xEnd = CTLineGetOffsetForStringIndex(line, interSection.location + interSection.length, NULL);
-            
-            CGPoint lineOrigin = lineOrigins[i];
-            CGFloat ascent,descent;
-            CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
-            
-            CGRect markedRect = CGRectMake(xStart, lineOrigin.y-descent, xEnd-xStart, ascent + descent);
-            UIRectFill(markedRect);
-        }
-    }
-    
-}
-
-- (NSRange)RangeIntersection:(NSRange)first WithSecond:(NSRange)second
-{
-    NSRange result = NSMakeRange(NSNotFound, 0);
-    //总共应该有5种情况,因为关于中心对称，所以可以更换两个位置取交集
-    if (first.location>second.location) {
-        NSRange tmp = first;
-        first = second;
-        second = tmp;
-    }
-    //交换之后始终second.location在first.location的后面
-    if (second.location < first.location + first.length) {
-        result.location = second.location;
-        NSUInteger end = MIN(first.location+first.length, second.location + second.length);
-        result.length = end-result.location;
-    }
-    
-    return result;
-    
-}
-
-
-
-- (void)textChanged
-{
-    [self setNeedsDisplay];
-    [self clearPreviousLayoutInfomation];
-    
-    NSAttributedString *attributeString = [[NSAttributedString alloc] initWithString:_text attributes:_attributes];
-    
-    if (_ctFrameSetter) {
-        CFRelease(_ctFrameSetter);
-    }
-    _ctFrameSetter = CTFramesetterCreateWithAttributedString((__bridge CFAttributedStringRef)attributeString);
-    [self updateCTFrame];
-}
-
-- (void)selectionChanged
-{
-    if (!_editing) {
-        [self.caretView removeFromSuperview];
-        return;
-    }
-    
-    if (self.selectedTextRange.length == 0) {
-        self.caretView.frame = [self caretRectForPosition:self.selectedTextRange.location];
-        if (self.caretView.superview == nil) {
-            [self addSubview:self.caretView];
-            [self setNeedsDisplay];
-        }
-        // Set up a timer to "blink" the caret.
-        [self.caretView delayBlink];
-    }
-    else {
-		// If there is an actual selection, don't draw the insertion caret.
-        [self.caretView removeFromSuperview];
-        [self setNeedsDisplay];
-    }
-    
-    if (self.markedTextRange.location != NSNotFound) {
-        [self setNeedsDisplay];
-    }
-}
-
-- (void)updateCTFrame
-{
-    UIBezierPath *path = [UIBezierPath bezierPathWithRect:self.bounds];
-    if (_ctFrame != NULL) {
-        CFRelease(_ctFrame);
-    }
-    _ctFrame = CTFramesetterCreateFrame(_ctFrameSetter, CFRangeMake(0, 0), [path CGPath], NULL);
+    _regexDict = [[NSMutableDictionary alloc] init];
 }
 
 #pragma mark - 属性存取器重写
@@ -169,6 +49,7 @@
     if (_ctFrame != NULL) {
         [self updateCTFrame];
     }
+    [self.delegate containerViewDidChangeFrame:self];
 }
 
 - (void)setBounds:(CGRect)bounds
@@ -177,6 +58,7 @@
     if (_ctFrame != NULL) {
         [self updateCTFrame];
     }
+    [self.delegate containerViewDidChangeFrame:self];
 }
 
 - (void)setText:(NSString *)text
@@ -216,9 +98,223 @@
     [self selectionChanged];
 }
 
+#pragma mark - 文本绘制区域
+
+- (void)drawRect:(CGRect)rect
+{
+    [self drawRangeAsSelectedOrMarkedRange:_markedTextRange];
+    [self drawRangeAsSelectedOrMarkedRange:_selectedTextRange];
+    [self drawTextInRect:rect];
+}
+
+//绘制当前正在编辑文本的会话或绘制选择的文本区域
+- (void)drawRangeAsSelectedOrMarkedRange:(NSRange)range
+{
+    if (!self.editing) {return;}
+    
+    if ( range.length == 0 || range.location == NSNotFound) { return; }
+    
+    [self.markColor setFill];
+    
+    CFArrayRef lines = CTFrameGetLines(_ctFrame);
+    int lineCount = CFArrayGetCount(lines);
+    CGPoint lineOrigins[lineCount];
+    CTFrameGetLineOrigins(_ctFrame, CFRangeMake(0, 0), lineOrigins);
+    for (int i = 0; i< CFArrayGetCount(lines); i++) {
+        CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex(lines, i);
+        CFRange lineRange = CTLineGetStringRange(line);
+        NSRange interSection = [YHETextContainerView RangeIntersection:NSMakeRange(lineRange.location, lineRange.length) WithSecond:range];
+        
+        if (interSection.location != NSNotFound && interSection.length >0) {
+            CGFloat xStart = CTLineGetOffsetForStringIndex(line, interSection.location, NULL);
+            CGFloat xEnd = CTLineGetOffsetForStringIndex(line, interSection.location + interSection.length, NULL);
+            
+            CGPoint lineOrigin = lineOrigins[i];
+            CGFloat ascent,descent;
+            CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
+            
+            CGRect markedRect = CGRectMake(xStart, lineOrigin.y-descent, xEnd-xStart, ascent + descent);
+            UIRectFill(markedRect);
+        }
+    }
+}
+
++ (NSRange)RangeIntersection:(NSRange)first WithSecond:(NSRange)second
+{
+    NSRange result = NSMakeRange(NSNotFound, 0);
+    //总共应该有5种情况,因为关于中心对称，所以可以更换两个位置取交集
+    if (first.location>second.location) {
+        NSRange tmp = first;
+        first = second;
+        second = tmp;
+    }
+    //交换之后始终second.location在first.location的后面
+    if (second.location < first.location + first.length) {
+        result.location = second.location;
+        NSUInteger end = MIN(first.location+first.length, second.location + second.length);
+        result.length = end-result.location;
+    }
+    
+    return result;
+}
+
++ (NSRange)RangeEncapsulateWithIntersection:(NSRange)first WithSecond:(NSRange)second
+{
+    NSRange result = [YHETextContainerView RangeIntersection:first WithSecond:second];
+    if (result.location != NSNotFound) {
+        result.location = MIN(first.location, second.location);
+        NSInteger end = MAX(first.location+first.length, second.location + second.length);
+        result.length = end - result.location;
+    }
+    return result;
+}
+
+//绘制界面上的文本
+- (void)drawTextInRect:(CGRect)rect
+{
+    CGContextRef context = UIGraphicsGetCurrentContext();
+    
+    CTFrameRef ctFrame = _ctFrame;
+    
+    CFArrayRef lines = CTFrameGetLines(ctFrame);
+    
+    for (int i = 0; i < CFArrayGetCount(lines); i++) {
+        CTLineRef line = CFArrayGetValueAtIndex(lines, i);
+        CGPoint lineOrigin = CGPointZero; //lineOrigins[i];
+        /**
+         *  无论有没有emoji,行高是一样的。行高的计算是从左下角为坐标系统原点，绘制时文字是反向的，所以ascender在下面，而descender在上面。第0个起始点应该是
+         *  bounds.size.height-ascender;
+         */
+        lineOrigin.y = rect.size.height-self.font.ascender - self.font.lineHeight*i;
+        CGContextSetTextPosition(context, lineOrigin.x, lineOrigin.y);
+        CTLineDraw(line, context);
+        [self drawEmotionsWithContext:context ForLine:line withLineOrigin:lineOrigin];
+    }
+}
+
+- (void)drawEmotionsWithContext:(CGContextRef)context ForLine:(CTLineRef)line withLineOrigin:(CGPoint)lineOrigin
+{
+    CFArrayRef runs = CTLineGetGlyphRuns(line);
+    for (int j = 0; j < CFArrayGetCount(runs); j++) {
+        CGFloat runAscent;
+        CGFloat runDescent;
+        CGFloat runLeading;
+        CTRunRef run = CFArrayGetValueAtIndex(runs, j);
+        NSDictionary* attributes = (NSDictionary*)CTRunGetAttributes(run);
+        CGRect runRect;
+        runRect.size.width = CTRunGetTypographicBounds(run, CFRangeMake(0,0), &runAscent, &runDescent, &runLeading);
+        runRect=CGRectMake(lineOrigin.x + CTLineGetOffsetForStringIndex(line, CTRunGetStringRange(run).location, NULL), lineOrigin.y, runRect.size.width, runAscent + runDescent);
+        
+        NSString *imageName = [attributes objectForKey:@"YHECustomEmotion"];
+        
+        //图片渲染逻辑
+        if (imageName) {
+            UIImage *image = [self.delegate containerView:self willDrawEmotionWithTag:imageName];
+//            if (!image) {
+//                [NSException raise:@"未能获得表情图片" format:@"请确认对应的tag是否存在对应的表情图片"];
+//            }
+            if (image) {
+                CGRect imageDrawRect;
+                imageDrawRect.size = image.size;
+                imageDrawRect.size = CGSizeMake(20, 20);
+                imageDrawRect.origin.x = runRect.origin.x + lineOrigin.x;
+                imageDrawRect.origin.y = lineOrigin.y-5;
+                CGContextDrawImage(context, imageDrawRect, image.CGImage);
+            }
+        }
+    }
+}
+
+
+#pragma mark - 文本预处理
+- (void)textChanged
+{
+    //重新计算本视图的高度
+    
+    [self setNeedsDisplay];
+    [self clearPreviousLayoutInfomation];
+    
+    NSAttributedString *attributeString = [self parserTextForDraw];//[[NSAttributedString alloc] initWithString:_text attributes:_attributes];
+    
+    if (_ctFrameSetter) {
+        CFRelease(_ctFrameSetter);
+    }
+
+    _ctFrameSetter = CTFramesetterCreateWithAttributedString((__bridge CFAttributedStringRef)attributeString);
+    CGSize size = CTFramesetterSuggestFrameSizeWithConstraints(_ctFrameSetter, CFRangeMake(0, 0), NULL, CGSizeMake(self.frame.size.width, CGFLOAT_MAX), NULL);
+    [self setFrame:CGRectMake(self.frame.origin.x, self.frame.origin.y, self.frame.size.width, ceilf(size.height)+17.0f)];
+    
+    [self updateCTFrame];
+}
+
+- (void)selectionChanged
+{
+    if (!_editing) {
+        [self.caretView removeFromSuperview];
+        return;
+    }
+    
+    if (self.selectedTextRange.length == 0) {
+        self.caretView.frame = [self caretRectForPosition:self.selectedTextRange.location];
+        if (self.caretView.superview == nil) {
+            [self addSubview:self.caretView];
+            [self setNeedsDisplay];
+        }
+        // Set up a timer to "blink" the caret.
+        [self.caretView delayBlink];
+    }
+    else {
+		// If there is an actual selection, don't draw the insertion caret.
+        [self.caretView removeFromSuperview];
+        [self setNeedsDisplay];
+    }
+    
+    if (self.markedTextRange.location != NSNotFound) {
+        [self setNeedsDisplay];
+    }
+}
+
+- (void)updateCTFrame
+{
+    UIBezierPath *path = [UIBezierPath bezierPathWithRect:self.bounds];
+    if (_ctFrame != NULL) {
+        CFRelease(_ctFrame);
+    }
+    _ctFrame = CTFramesetterCreateFrame(_ctFrameSetter, CFRangeMake(0, 0), [path CGPath], NULL);
+}
+
+- (NSAttributedString *)parserTextForDraw
+{
+    NSMutableAttributedString *attributeString = [[NSMutableAttributedString alloc] initWithString:_text attributes:_attributes];
+    NSString *yohoEmotionPattern = self.regexDict[kRegexYohoEmotion];
+    if (!yohoEmotionPattern || yohoEmotionPattern.length == 0) {
+        return attributeString;
+    }
+    NSError *error = nil;
+    //通过正则表达式匹配字符串
+    NSRegularExpression *yohoEmotionRegular = [NSRegularExpression regularExpressionWithPattern:yohoEmotionPattern options:NSRegularExpressionDotMatchesLineSeparators error:&error];
+    NSArray *checkingResults = [yohoEmotionRegular matchesInString:attributeString.string options:NSMatchingReportCompletion range:NSMakeRange(0,attributeString.length)];
+    //倒着替换，这样就不会使一次替换后range发生变化
+    for (int row = checkingResults.count-1;row>=0;row--) {
+        NSTextCheckingResult *checkingResult = checkingResults[row];
+        NSString *checkingStr = [attributeString.string substringWithRange:checkingResult.range];
+        checkingStr = [checkingStr substringWithRange:NSMakeRange(1, 2)];
+        BOOL shouldDrawEmotion = [self.delegate containerView:self shouldDrawEmotionWithTag:checkingStr];
+        if (shouldDrawEmotion) {
+            CTRunDelegateRef runDelegate = [self runDelegateForImage:(__bridge void *)(checkingStr)];
+            //逻辑定义要求占位字符串长度与替换前字符串长度一致
+            NSMutableAttributedString *placeHolderAttributeStr = [[NSMutableAttributedString alloc] initWithString:@"    " attributes:@{@"YHECustomEmotion": checkingStr}];
+            [placeHolderAttributeStr addAttribute:(__bridge NSString *)kCTRunDelegateAttributeName value:(id)CFBridgingRelease(runDelegate) range:NSMakeRange(0, placeHolderAttributeStr.length)];
+            [attributeString replaceCharactersInRange:checkingResult.range withAttributedString:placeHolderAttributeStr];
+        }
+    }
+    
+    return attributeString;
+}
+
 #pragma mark -
 
-#pragma mark - 
+#pragma mark - 绘制界面文本选中,光标等几何计算
 - (CGRect)firstRectForRange:(NSRange)range
 {
     NSInteger index = range.location;
@@ -270,15 +366,16 @@
         CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex(lines, linesCount -1);
         CFRange range = CTLineGetStringRange(line);
 
-        CGPoint origin = lineOrigins[linesCount-1];
+        CGPoint lineOrigin = lineOrigins[linesCount-1];
         CGFloat ascent, descent;
         CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
-        CTFrameGetLineOrigins(_ctFrame, CFRangeMake(linesCount - 1, 0), &origin);
+        CTFrameGetLineOrigins(_ctFrame, CFRangeMake(linesCount - 1, 0), &lineOrigin);
 		// Place point after last line, including any font leading spacing if applicable.
-        origin.y -= self.font.leading;
+        lineOrigin.y = self.bounds.size.height-self.font.ascender - self.font.lineHeight*(linesCount-1);
+        lineOrigin.y -= self.font.leading;
         
         CGFloat xPos = CTLineGetOffsetForStringIndex(line, range.location, NULL);
-        return CGRectMake(xPos, origin.y - descent, 3, ascent + descent);
+        return CGRectMake(xPos, lineOrigin.y - descent, 3, ascent + descent);
     }
     
     // 正常情况，插入点在文本中间
@@ -289,16 +386,17 @@
         //计算索引是不是在本行
         if (localIndex >= 0 && localIndex <= range.length) {
             
-            CGPoint origin = lineOrigins[linesIndex];
+            CGPoint lineOrigin = lineOrigins[linesIndex];
+            lineOrigin.y = self.bounds.size.height-self.font.ascender - self.font.lineHeight*linesIndex;
+            
             CGFloat ascent= 0.0f, descent = 0.0f;
             CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
             
 			// index is in the range for this line.
             CGFloat xPos = CTLineGetOffsetForStringIndex(line, index, NULL);
 
-            
 			// Make a small "caret" rect at the index position.
-            return CGRectMake(xPos, origin.y - descent, 3, ascent + descent);
+            return CGRectMake(xPos, lineOrigin.y - descent, 3, ascent + descent);
         }
     }
     
@@ -327,6 +425,59 @@
     
     return  self.text.length;
 }
+
+- (NSInteger)closestIndexForRichTextFromPoint:(CGPoint)point
+{
+    NSInteger index = [self closestIndexToPoint:point];
+    NSString *yohoEmotionPattern = self.regexDict[kRegexYohoEmotion];
+    if (yohoEmotionPattern) {
+        NSError *error = nil;
+        //通过正则表达式匹配字符串
+        NSRegularExpression *yohoEmotionRegular = [NSRegularExpression regularExpressionWithPattern:yohoEmotionPattern options:NSRegularExpressionDotMatchesLineSeparators error:&error];
+        NSArray *checkingResults = [yohoEmotionRegular matchesInString:_text options:NSMatchingReportCompletion range:NSMakeRange(0,_text.length)];
+        for (NSTextCheckingResult *textCheckingResult in checkingResults) {
+            if ((index>textCheckingResult.range.location)&&(index<textCheckingResult.range.location+textCheckingResult.range.length)) {
+                index = textCheckingResult.range.location + textCheckingResult.range.length;
+            }
+        }
+    }
+    return index;
+}
+
+#pragma mark - CTRunDelegateCallBack
+#pragma mark - 绘制自定义表情的几何回调
+- (CTRunDelegateRef)runDelegateForImage:(void *)refCon
+{
+    CTRunDelegateCallbacks imageCallBacks;
+    imageCallBacks.dealloc = RunDelegateDeallocCallBack;
+    imageCallBacks.version = kCTRunDelegateVersion1;
+    imageCallBacks.getAscent = RunDelegateGetAscentCallback;
+    imageCallBacks.getDescent = RunDelegateGetDescentCallback;
+    imageCallBacks.getWidth = RunDelegateGetWidthCallback;
+    CTRunDelegateRef runDelegate = CTRunDelegateCreate(&imageCallBacks,refCon);
+    return runDelegate;
+}
+
+void RunDelegateDeallocCallBack(void *refCon)
+{
+    
+}
+
+CGFloat RunDelegateGetAscentCallback(void *refCon)
+{
+    return 13.7f;
+}
+
+CGFloat RunDelegateGetDescentCallback(void *refCon)
+{
+    return 3.3f;
+}
+
+CGFloat RunDelegateGetWidthCallback(void *refCon)
+{
+    return 5.0f;
+}
+
 
 #pragma mark -
 

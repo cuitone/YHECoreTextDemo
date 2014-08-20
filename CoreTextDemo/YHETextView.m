@@ -15,7 +15,7 @@
 #import "YHECaretView.h"
 
 @interface YHETextView ()
-<UIGestureRecognizerDelegate>
+<UIGestureRecognizerDelegate,YHETextContainerViewDelegate>
 {
     YHETextContainerView *_textContainerView;
     NSMutableString *_mutableText;
@@ -38,6 +38,8 @@
 
 @synthesize editable = _editable;
 
+@dynamic regexDict;
+
 - (id)initWithFrame:(CGRect)frame
 {
     self = [super initWithFrame:frame];
@@ -51,8 +53,11 @@
 - (void)initView
 {
     [self setBackgroundColor:[UIColor greenColor]];
-    _textContainerView = [[YHETextContainerView alloc] initWithFrame:CGRectMake(0, 0, self.bounds.size.width, 150)];
+    _textContainerView = [[YHETextContainerView alloc] initWithFrame:CGRectMake(0, 0, self.frame.size.width, 0)];
+    [_textContainerView setAutoresizingMask:UIViewAutoresizingFlexibleWidth];
     [self addSubview:_textContainerView];
+    [_textContainerView setClipsToBounds:NO];
+    [_textContainerView setDelegate:self];
     [_textContainerView setUserInteractionEnabled:NO];
     self.userInteractionEnabled = YES;
     
@@ -80,7 +85,14 @@
 
 - (BOOL)resignFirstResponder
 {
-    return [super resignFirstResponder];
+    BOOL shouldEndEditing = YES;
+    if ([self.delegate respondsToSelector:@selector(textViewShouldEndEditing:)]) {
+        shouldEndEditing = [self.delegate textViewShouldEndEditing:self];
+    }
+    if (shouldEndEditing) {
+        [self.delegate respondsToSelector:@selector(textViewDidEndEditing:)];
+    }
+    return shouldEndEditing;
 }
 
 /*
@@ -100,18 +112,33 @@
     if (self.isFirstResponder) {
         [self.inputDelegate selectionWillChange:self];
         
-        NSInteger index = [_textContainerView closestIndexToPoint:[tap locationInView:_textContainerView]];
+        NSInteger index = [_textContainerView closestIndexForRichTextFromPoint:[tap locationInView:_textContainerView]];
         //点击屏幕后使markedTextRange.location＝NSNotFound,这样输入汉字的时候就不会从起始点开始了
         _textContainerView.markedTextRange = NSMakeRange(NSNotFound, 0);
         _textContainerView.selectedTextRange = NSMakeRange(index, 0);
         [_textContainerView setEditing:YES];
-        
         [self.inputDelegate selectionDidChange:self];
     }
     else
     {
-        _textContainerView.editing = YES;
-        [self becomeFirstResponder];
+        BOOL shouldBeginEditing = YES;
+        if ([self.delegate respondsToSelector:@selector(textViewShouldBeginEditing:)]) {
+            shouldBeginEditing = [self.delegate textViewShouldBeginEditing:self];
+        }
+        if (shouldBeginEditing) {
+            _textContainerView.editing = YES;
+            [self becomeFirstResponder];
+            
+            NSInteger index = [_textContainerView closestIndexToPoint:[tap locationInView:_textContainerView]];
+            //点击屏幕后使markedTextRange.location＝NSNotFound,这样输入汉字的时候就不会从起始点开始了
+            _textContainerView.markedTextRange = NSMakeRange(NSNotFound, 0);
+            _textContainerView.selectedTextRange = NSMakeRange(index, 0);
+            [_textContainerView setEditing:YES];
+            
+            if ([self.delegate respondsToSelector:@selector(textViewDidBeginEditing:)]) {
+                [self.delegate textViewDidBeginEditing:self];
+            }
+        }
     }
 }
 
@@ -119,6 +146,7 @@
 {
     
 }
+
 
 #pragma mark - 属性存取器重写
 
@@ -162,13 +190,10 @@
     return YES;
 }
 
-#pragma mark - Gesture Delegate
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch
+- (NSMutableDictionary *)regexDict
 {
-    return (touch.view == self);
+    return _textContainerView.regexDict;
 }
-
-
 
 #pragma mark - UITextInput
 
@@ -213,7 +238,35 @@
 - (void)setSelectedTextRange:(UITextRange *)range
 {
     YHETextRange *indexedRange = (YHETextRange *)range;
-    _textContainerView.selectedTextRange = indexedRange.range;
+    NSRange selectedTextRange = indexedRange.range;
+    NSString *yohoEmotionPattern = self.regexDict[kRegexYohoEmotion];
+    if (yohoEmotionPattern) {
+        NSError *error = nil;
+        //通过正则表达式匹配字符串
+        NSRegularExpression *yohoEmotionRegular = [NSRegularExpression regularExpressionWithPattern:yohoEmotionPattern options:NSRegularExpressionDotMatchesLineSeparators error:&error];
+        NSArray *checkingResults = [yohoEmotionRegular matchesInString:_text options:NSMatchingReportCompletion range:NSMakeRange(0,_text.length)];
+        for (NSTextCheckingResult *textCheckingResult in checkingResults) {
+            NSString *checkingStr = [self.text substringWithRange:textCheckingResult.range];
+            checkingStr = [checkingStr substringWithRange:NSMakeRange(1, 2)];
+            
+            BOOL shouldDrawEmotion = NO;
+            if ([self.delegate respondsToSelector:@selector(textView:shouldDrawEmotionWithTag:)]) {
+                shouldDrawEmotion = [self.delegate textView:self shouldDrawEmotionWithTag:checkingStr];
+            }
+            if (!shouldDrawEmotion) {
+                continue;
+            }
+            
+            NSRange encapsulateRange = [YHETextContainerView RangeEncapsulateWithIntersection:selectedTextRange WithSecond:textCheckingResult.range];
+            if (encapsulateRange.location != NSNotFound) {
+                selectedTextRange = encapsulateRange;
+            }
+        }
+    }
+    _textContainerView.selectedTextRange = selectedTextRange;
+    if ([self.delegate respondsToSelector:@selector(textViewDidChangeSelection:)]) {
+        [self.delegate textViewDidChangeSelection:self];
+    }
 }
 
 
@@ -243,13 +296,13 @@
     
     else if(selectedTextRange.length>0)
     {
-        [_mutableText replaceCharactersInRange:selectedRange withString:markedText];
+        [_mutableText replaceCharactersInRange:selectedTextRange withString:markedText];
         markedTextRange.location = selectedTextRange.location;
         markedTextRange.length = markedText.length;
     }
     else
     {
-        [_mutableText insertString:markedText atIndex:selectedRange.location];
+        [_mutableText insertString:markedText atIndex:selectedTextRange.location];
         markedTextRange.location = selectedTextRange.location;
         markedTextRange.length = markedText.length;
     }
@@ -261,8 +314,9 @@
     _textContainerView.selectedTextRange = selectedTextRange;
     _textContainerView.markedTextRange = markedTextRange;
     self.selectedRange = _textContainerView.selectedTextRange;
-    
-    
+    if ([self.delegate respondsToSelector:@selector(textViewDidChange:)]) {
+        [self.delegate textViewDidChange:self];
+    }
 }
 
 - (void)unmarkText
@@ -312,6 +366,7 @@
     return [YHETextPosition positionWithIndex:end];
 }
 
+//键盘上下左右按键会调用此方法调整光标的位置
 - (UITextPosition *)positionFromPosition:(UITextPosition *)position inDirection:(UITextLayoutDirection)direction offset:(NSInteger)offset
 {
     YHETextPosition *aPosition = (YHETextPosition *)position;
@@ -463,6 +518,9 @@
 - (NSDictionary *)textStylingAtPosition:(UITextPosition *)position inDirection:(UITextStorageDirection)direction
 {
     // This sample assumes all text is single-styled, so this is easy.
+    if (!self.font) {
+        self.font = [UIFont systemFontOfSize:17.0];
+    }
     return @{ UITextInputTextFontKey : self.font };
 }
 
@@ -478,50 +536,112 @@
     NSRange selectedTextRange = _textContainerView.selectedTextRange;
     NSRange markedTextRange = _textContainerView.markedTextRange;
     
-    
     if (markedTextRange.location != NSNotFound) {
-        [_mutableText replaceCharactersInRange:markedTextRange withString:text];
-        selectedTextRange.location = markedTextRange.location+text.length;
-        selectedTextRange.length = 0;
-        markedTextRange = NSMakeRange(NSNotFound, 0);
+        BOOL shouldChange = YES;
+        if ([self.delegate respondsToSelector:@selector(textView:shouldChangeTextInRange:replacementText:)]) {
+            shouldChange = [self.delegate textView:self shouldChangeTextInRange:markedTextRange replacementText:text];
+        }
+        if (shouldChange) {
+            [_mutableText replaceCharactersInRange:markedTextRange withString:text];
+            selectedTextRange.location = markedTextRange.location+text.length;
+            selectedTextRange.length = 0;
+            markedTextRange = NSMakeRange(NSNotFound, 0);
+        }
+        else
+        {
+            return;
+        }
     }
     else if (selectedTextRange.length > 0) {
-        [_mutableText replaceCharactersInRange:selectedTextRange withString:text];
-        [_textContainerView setSelectedTextRange:NSMakeRange(_mutableText.length, 0)];
+        BOOL shouldChange = YES;
+        if ([self.delegate respondsToSelector:@selector(textView:shouldChangeTextInRange:replacementText:)]) {
+            shouldChange = [self.delegate textView:self shouldChangeTextInRange:markedTextRange replacementText:text];
+        }
+        if (shouldChange) {
+            [_mutableText replaceCharactersInRange:selectedTextRange withString:text];
+            [_textContainerView setSelectedTextRange:NSMakeRange(_mutableText.length, 0)];
+        }
+        else
+        {
+            return;
+        }
     }
     else
     {
-        [_mutableText insertString:text atIndex:selectedTextRange.location];
-        selectedTextRange.location += text.length;
+        BOOL shouldChange = YES;
+        if ([self.delegate respondsToSelector:@selector(textView:shouldChangeTextInRange:replacementText:)]) {
+            shouldChange = [self.delegate textView:self shouldChangeTextInRange:markedTextRange replacementText:text];
+        }
+        if (shouldChange) {
+            [_mutableText insertString:text atIndex:selectedTextRange.location];
+            selectedTextRange.location += text.length;
+        }
+        else
+        {
+            return;
+        }
     }
     
     self.text = [_mutableText copy];
     _textContainerView.selectedTextRange = selectedTextRange;
     _textContainerView.markedTextRange = markedTextRange;
     self.selectedRange = _textContainerView.selectedTextRange;
-    
+    if ([self.delegate respondsToSelector:@selector(textViewDidChange:)]) {
+        [self.delegate textViewDidChange:self];
+    }
 }
 
 - (void)deleteBackward
 {
     NSRange selectedTextRange = _textContainerView.selectedTextRange;
     NSRange markedTextRange = _textContainerView.markedTextRange;
-    
+    //这里如果删除到了富替换文本，那么要完整删除掉
+
     if (markedTextRange.location != NSNotFound) {
-        [_mutableText deleteCharactersInRange:markedTextRange];
-        selectedTextRange = NSMakeRange(markedTextRange.location, 0);
-        markedTextRange = NSMakeRange(NSNotFound, 0);
+        BOOL shouldChange = YES;
+        if ([self.delegate respondsToSelector:@selector(textView:shouldChangeTextInRange:replacementText:)]) {
+            shouldChange = [self.delegate textView:self shouldChangeTextInRange:markedTextRange replacementText:@""];
+        }
+        if (shouldChange) {
+            [_mutableText deleteCharactersInRange:markedTextRange];
+            selectedTextRange = NSMakeRange(markedTextRange.location, 0);
+            markedTextRange = NSMakeRange(NSNotFound, 0);
+        }
+        else
+        {
+            return;
+        }
     }
     else if (selectedTextRange.length>0) {
-        [_mutableText deleteCharactersInRange:selectedTextRange];
-        selectedTextRange.length = 0;
+        BOOL shouldChange = YES;
+        if ([self.delegate respondsToSelector:@selector(textView:shouldChangeTextInRange:replacementText:)]) {
+            shouldChange = [self.delegate textView:self shouldChangeTextInRange:selectedTextRange replacementText:@""];
+        }
+        if (shouldChange) {
+            [_mutableText deleteCharactersInRange:selectedTextRange];
+            selectedTextRange.length = 0;
+        }
+        else
+        {
+            return;
+        }
     }
     else if(selectedTextRange.location >0)
     {
-        selectedTextRange.location --;
-        selectedTextRange.length = 1;
-        [_mutableText deleteCharactersInRange:selectedTextRange];
-        selectedTextRange.length = 0;
+        BOOL shouldChange = YES;
+        if ([self.delegate respondsToSelector:@selector(textView:shouldChangeTextInRange:replacementText:)]) {
+            shouldChange = [self.delegate textView:self shouldChangeTextInRange:selectedTextRange replacementText:@""];
+        }
+        if (shouldChange) {
+            selectedTextRange.location --;
+            selectedTextRange.length = 1;
+            [_mutableText deleteCharactersInRange:selectedTextRange];
+            selectedTextRange.length = 0;
+        }
+        else
+        {
+            return;
+        }
     }
 
 
@@ -530,6 +650,39 @@
     _textContainerView.selectedTextRange = selectedTextRange;
     _textContainerView.markedTextRange = markedTextRange;
     self.selectedRange = _textContainerView.selectedTextRange;
+    if ([self.delegate respondsToSelector:@selector(textViewDidChange:)]) {
+        [self.delegate textViewDidChange:self];
+    }
+}
+
+#pragma mark - YHETextContainerView Delegate
+- (BOOL)containerView:(YHETextContainerView *)containerView shouldDrawEmotionWithTag:(NSString *)tag
+{
+    if ([self.delegate respondsToSelector:@selector(textView:shouldDrawEmotionWithTag:)]) {
+        return [self.delegate textView:self shouldDrawEmotionWithTag:tag];
+    }
+    return NO;
+}
+
+- (UIImage *)containerView:(YHETextContainerView *)containerView willDrawEmotionWithTag:(NSString *)tag
+{
+    if ([self.delegate respondsToSelector:@selector(textView:willDrawEmotionWithTag:)]) {
+        return [self.delegate textView:self willDrawEmotionWithTag:tag];
+    }
+    return nil;
+}
+
+- (void)containerViewDidChangeFrame:(YHETextContainerView *)containerView
+{
+    CGFloat contentHeight = MAX(self.contentSize.height, _textContainerView.frame.size.height);
+    if (contentHeight!=self.contentSize.height) {
+        self.contentSize =  containerView.frame.size;
+        CGRect caretFrame = _textContainerView.caretView.frame;
+        caretFrame = [self convertRect:caretFrame fromView:_textContainerView];
+        [self scrollRectToVisible:caretFrame  animated:YES];
+    }
+
+    
 }
 
 @end
