@@ -22,6 +22,7 @@
 		A520080A199A02D200DAD449 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A5200808199A02D200DAD449 /* InfoPlist.strings */; };
 		A520080C199A02D200DAD449 /* CoreTextDemoTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A520080B199A02D200DAD449 /* CoreTextDemoTests.m */; };
 		A5200819199A067600DAD449 /* CoreText.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A5200818199A067600DAD449 /* CoreText.framework */; };
+		A542DEF319A61FAD0003F0C1 /* YHETextMagnifierCaret.m in Sources */ = {isa = PBXBuildFile; fileRef = A542DEF219A61FAD0003F0C1 /* YHETextMagnifierCaret.m */; };
 		A569C309199A200A00F26838 /* homepage_lbs_icon@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = A569C308199A200A00F26838 /* homepage_lbs_icon@2x.png */; };
 		A5A7925A19A58414008DE999 /* YHECaretView.m in Sources */ = {isa = PBXBuildFile; fileRef = A5A7925119A58414008DE999 /* YHECaretView.m */; };
 		A5A7925B19A58414008DE999 /* YHETextContainerView.m in Sources */ = {isa = PBXBuildFile; fileRef = A5A7925319A58414008DE999 /* YHETextContainerView.m */; };
@@ -62,6 +63,8 @@
 		A5200809199A02D200DAD449 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		A520080B199A02D200DAD449 /* CoreTextDemoTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CoreTextDemoTests.m; sourceTree = "<group>"; };
 		A5200818199A067600DAD449 /* CoreText.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreText.framework; path = System/Library/Frameworks/CoreText.framework; sourceTree = SDKROOT; };
+		A542DEF119A61FAD0003F0C1 /* YHETextMagnifierCaret.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YHETextMagnifierCaret.h; sourceTree = "<group>"; };
+		A542DEF219A61FAD0003F0C1 /* YHETextMagnifierCaret.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YHETextMagnifierCaret.m; sourceTree = "<group>"; };
 		A569C308199A200A00F26838 /* homepage_lbs_icon@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "homepage_lbs_icon@2x.png"; sourceTree = "<group>"; };
 		A5A7925019A58414008DE999 /* YHECaretView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YHECaretView.h; sourceTree = "<group>"; };
 		A5A7925119A58414008DE999 /* YHECaretView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YHECaretView.m; sourceTree = "<group>"; };
@@ -200,6 +203,8 @@
 				A5A7925719A58414008DE999 /* YHETextRange.m */,
 				A5A7925819A58414008DE999 /* YHETextView.h */,
 				A5A7925919A58414008DE999 /* YHETextView.m */,
+				A542DEF119A61FAD0003F0C1 /* YHETextMagnifierCaret.h */,
+				A542DEF219A61FAD0003F0C1 /* YHETextMagnifierCaret.m */,
 			);
 			path = YHECoreText;
 			sourceTree = "<group>";
@@ -313,6 +318,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A5A7925E19A58414008DE999 /* YHETextView.m in Sources */,
+				A542DEF319A61FAD0003F0C1 /* YHETextMagnifierCaret.m in Sources */,
 				A52007F7199A02D200DAD449 /* YHEViewController.m in Sources */,
 				A5A7925D19A58414008DE999 /* YHETextRange.m in Sources */,
 				A52007ED199A02D200DAD449 /* main.m in Sources */,

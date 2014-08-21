@@ -13,6 +13,7 @@
 #import "YHETextPosition.h"
 #import "YHETextRange.h"
 #import "YHECaretView.h"
+#import "YHETextMagnifierCaret.h"
 
 @interface YHETextView ()
 <UIGestureRecognizerDelegate,YHETextContainerViewDelegate>
@@ -24,6 +25,16 @@
 @property (nonatomic,strong) UITextInputStringTokenizer *tokenizer;
 
 @property (nonatomic,strong) YHETextContainerView *textContainerView;
+
+@property (nonatomic,strong) YHETextMagnifierCaret *magnifierCaret;
+
+@property (nonatomic,strong) UITapGestureRecognizer *singleTapGesture;
+
+@property (nonatomic,strong) UILongPressGestureRecognizer *selectionGesture;
+
+@property (nonatomic,strong) UIPanGestureRecognizer *startPanGesture;
+
+@property (nonatomic,strong) UIPanGestureRecognizer *endPanGesture;
 
 
 @end
@@ -61,21 +72,34 @@
     [_textContainerView setUserInteractionEnabled:NO];
     self.userInteractionEnabled = YES;
     
-    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tap:)];
-    tap.numberOfTapsRequired = 1;
-    tap.numberOfTouchesRequired = 1;
-    tap.delegate = self;
-    [self addGestureRecognizer:tap];
+    self.magnifierCaret = [[YHETextMagnifierCaret alloc] init];
     
-    UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)];
-    longPress.numberOfTapsRequired = 1;
-    longPress.numberOfTouchesRequired = 1;
-    longPress.delegate = self;
-    [self addGestureRecognizer:longPress];
+
     
     self.text = @"";
     _tokenizer = [[UITextInputStringTokenizer alloc] initWithTextInput:self];
     _mutableText = [[NSMutableString alloc] init];
+}
+
+
+- (void)initGesture
+{
+    self.singleTapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tap:)];
+    self.singleTapGesture.numberOfTapsRequired = 1;
+    self.singleTapGesture.numberOfTouchesRequired = 1;
+    self.singleTapGesture.delegate = self;
+    [self addGestureRecognizer:self.singleTapGesture];
+    
+    self.selectionGesture = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)];
+    self.selectionGesture.numberOfTapsRequired = 1;
+    self.selectionGesture.numberOfTouchesRequired = 1;
+    self.selectionGesture.delegate = self;
+    [self addGestureRecognizer:self.selectionGesture];
+    
+//    self.startPanGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(startPan:)];
+//    self addGestureRecognizer:
+
+    
 }
 
 #pragma mark - FirstResponder
