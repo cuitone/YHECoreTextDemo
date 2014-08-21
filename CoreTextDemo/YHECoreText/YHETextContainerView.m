@@ -210,9 +210,9 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
         //图片渲染逻辑
         if (imageName) {
             UIImage *image = [self.delegate containerView:self willDrawEmotionWithTag:imageName];
-//            if (!image) {
-//                [NSException raise:@"未能获得表情图片" format:@"请确认对应的tag是否存在对应的表情图片"];
-//            }
+            if (!image) {
+                [NSException raise:@"未能获得表情图片" format:@"请确认对应的tag是否存在对应的表情图片"];
+            }
             if (image) {
                 CGRect imageDrawRect;
                 imageDrawRect.size = image.size;
