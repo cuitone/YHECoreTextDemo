@@ -78,32 +78,55 @@
     _mutableText = [[NSMutableString alloc] init];
 }
 
-- (BOOL)canBecomeFirstResponder
+#pragma mark - FirstResponder
+
+- (BOOL)endEditing:(BOOL)force
 {
-    return YES;
+    BOOL endEditing = [super endEditing:force];
+    [_textContainerView setEditing:!endEditing];
+    return endEditing;
 }
 
-- (BOOL)resignFirstResponder
+- (BOOL)canBecomeFirstResponder
+{
+    BOOL shouldBeginEditing = YES;
+    if ([self.delegate respondsToSelector:@selector(textViewShouldBeginEditing:)]) {
+        shouldBeginEditing = [self.delegate textViewShouldBeginEditing:self];
+    }
+    return shouldBeginEditing;
+}
+
+- (BOOL)canResignFirstResponder
 {
     BOOL shouldEndEditing = YES;
     if ([self.delegate respondsToSelector:@selector(textViewShouldEndEditing:)]) {
         shouldEndEditing = [self.delegate textViewShouldEndEditing:self];
     }
-    if (shouldEndEditing) {
-        [self.delegate respondsToSelector:@selector(textViewDidEndEditing:)];
-    }
     return shouldEndEditing;
 }
 
-/*
-// Only override drawRect: if you perform custom drawing.
-// An empty implementation adversely affects performance during animation.
-- (void)drawRect:(CGRect)rect
+- (BOOL)resignFirstResponder
 {
-    // Drawing code
+    if (_textContainerView.isEditing) {
+        [_textContainerView setEditing:NO];
+        if ([self.delegate respondsToSelector:@selector(textViewDidEndEditing:)]) {
+            [self.delegate textViewDidEndEditing:self];
+        }
+    }
+    
+    return [super resignFirstResponder];
 }
-*/
 
+- (BOOL)becomeFirstResponder
+{
+    if (!self.isFirstResponder) {
+        if (self.isEditable)
+        {
+            _textContainerView.editing = YES;
+        }
+    }
+    return [super becomeFirstResponder];
+}
 
 #pragma makr - Gesture Recognizer
 
@@ -121,24 +144,19 @@
     }
     else
     {
-        BOOL shouldBeginEditing = YES;
-        if ([self.delegate respondsToSelector:@selector(textViewShouldBeginEditing:)]) {
-            shouldBeginEditing = [self.delegate textViewShouldBeginEditing:self];
-        }
-        if (shouldBeginEditing) {
-            _textContainerView.editing = YES;
-            [self becomeFirstResponder];
+        [self becomeFirstResponder];
+        _textContainerView.editing = YES;
+        
+        NSInteger index = [_textContainerView closestIndexToPoint:[tap locationInView:_textContainerView]];
+        //点击屏幕后使markedTextRange.location＝NSNotFound,这样输入汉字的时候就不会从起始点开始了
+        _textContainerView.markedTextRange = NSMakeRange(NSNotFound, 0);
+        _textContainerView.selectedTextRange = NSMakeRange(index, 0);
+        [_textContainerView setEditing:YES];
             
-            NSInteger index = [_textContainerView closestIndexToPoint:[tap locationInView:_textContainerView]];
-            //点击屏幕后使markedTextRange.location＝NSNotFound,这样输入汉字的时候就不会从起始点开始了
-            _textContainerView.markedTextRange = NSMakeRange(NSNotFound, 0);
-            _textContainerView.selectedTextRange = NSMakeRange(index, 0);
-            [_textContainerView setEditing:YES];
-            
-            if ([self.delegate respondsToSelector:@selector(textViewDidBeginEditing:)]) {
-                [self.delegate textViewDidBeginEditing:self];
-            }
+        if ([self.delegate respondsToSelector:@selector(textViewDidBeginEditing:)]) {
+            [self.delegate textViewDidBeginEditing:self];
         }
+        
     }
 }
 
@@ -156,6 +174,13 @@
         _text = [text copy];
         [_mutableText replaceCharactersInRange:NSMakeRange(0, _mutableText.length) withString:_text];
         _textContainerView.text = text;
+        
+        NSRange markedTextRange = NSMakeRange(NSNotFound, 0);
+        NSRange selectedTextRange = NSMakeRange(_text.length, 0);
+        _textContainerView.selectedTextRange = selectedTextRange;
+        _textContainerView.markedTextRange = markedTextRange;
+
+        //在外部设置文本时要根据文本变更选择的location
     }
 }
 
@@ -582,7 +607,9 @@
         }
     }
     
-    self.text = [_mutableText copy];
+    _text = [_mutableText copy];
+    _textContainerView.text = _text;
+    
     _textContainerView.selectedTextRange = selectedTextRange;
     _textContainerView.markedTextRange = markedTextRange;
     self.selectedRange = _textContainerView.selectedTextRange;

@@ -8,6 +8,8 @@
 
 #import <UIKit/UIKit.h>
 
+#define kRegexYohoEmotion @"kRegexYohoEmotion"
+
 @class YHETextView;
 
 @protocol YHETextViewDelegate <NSObject, UIScrollViewDelegate>
@@ -33,7 +35,7 @@
 
 @end
 
-extern  NSString * const kRegexYohoEmotion;
+//extern  NSString * const kRegexYohoEmotion;
 
 @interface YHETextView : UIScrollView <UITextInput>
 
@@ -45,6 +47,9 @@ extern  NSString * const kRegexYohoEmotion;
 @property(nonatomic) NSTextAlignment textAlignment;    // default is NSLeftTextAlignment
 @property(nonatomic) NSRange selectedRange;
 @property(nonatomic,getter=isEditable) BOOL editable;
+
+@property (readwrite) UIView *inputView;
+@property (readwrite) UIView *inputAccessoryView;
 
 @property(nonatomic,readonly) NSMutableDictionary *regexDict;
 
