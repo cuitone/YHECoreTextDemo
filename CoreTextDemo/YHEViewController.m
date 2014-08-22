@@ -75,10 +75,10 @@
 
 - (BOOL)textView:(YHETextView *)textView shouldChangeTextInRange:(NSRange)range replacementText:(NSString *)text
 {
-    if (text.length==0) {
-        NSString *subStr = [textView.text substringWithRange:range];
-        NSLog(@"Delete Text %@",subStr);
-    }
+//    if (text.length==0) {
+//        NSString *subStr = [textView.text substringWithRange:range];
+//        NSLog(@"Delete Text %@",subStr);
+//    }
     return YES;
 }
 

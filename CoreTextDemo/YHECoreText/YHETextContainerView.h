@@ -8,6 +8,7 @@
 
 #import <UIKit/UIKit.h>
 #import <CoreText/CoreText.h>
+#import "YHETextSelectionView.h"
 
 @class YHETextContainerView;
 @class YHECaretView;
@@ -51,6 +52,8 @@
 
 @property (nonatomic,strong) NSMutableDictionary *regexDict;
 
+@property (nonatomic,strong) YHETextSelectionView *textSelectionView;
+
 - (CGRect)firstRectForRange:(NSRange)range;
 
 - (CGRect)caretRectForPosition:(int)index;
@@ -58,6 +61,7 @@
 - (NSInteger)closestIndexToPoint:(CGPoint)point;
 
 - (NSInteger)closestIndexForRichTextFromPoint:(CGPoint)point;
+
 /**
  *  选择两个区域交叉的区域
  */

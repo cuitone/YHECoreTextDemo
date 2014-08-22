@@ -30,6 +30,9 @@
 		A5A7925D19A58414008DE999 /* YHETextRange.m in Sources */ = {isa = PBXBuildFile; fileRef = A5A7925719A58414008DE999 /* YHETextRange.m */; };
 		A5A7925E19A58414008DE999 /* YHETextView.m in Sources */ = {isa = PBXBuildFile; fileRef = A5A7925919A58414008DE999 /* YHETextView.m */; };
 		A5B66C65199B507800CA1A2D /* TTTAttributedLabel.m in Sources */ = {isa = PBXBuildFile; fileRef = A5B66C64199B507800CA1A2D /* TTTAttributedLabel.m */; };
+		A5BCC8B319A6DBFC00C91CBF /* YHETextSelectionView.m in Sources */ = {isa = PBXBuildFile; fileRef = A5BCC8B219A6DBFC00C91CBF /* YHETextSelectionView.m */; };
+		A5BCC8B519A6EA9200C91CBF /* YHECoreTextView.bundle in Resources */ = {isa = PBXBuildFile; fileRef = A5BCC8B419A6EA9200C91CBF /* YHECoreTextView.bundle */; };
+		A5BCC8B819A70DCE00C91CBF /* YHETextSelectionGrabber.m in Sources */ = {isa = PBXBuildFile; fileRef = A5BCC8B719A70DCE00C91CBF /* YHETextSelectionGrabber.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -78,6 +81,11 @@
 		A5A7925919A58414008DE999 /* YHETextView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YHETextView.m; sourceTree = "<group>"; };
 		A5B66C63199B507800CA1A2D /* TTTAttributedLabel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TTTAttributedLabel.h; sourceTree = "<group>"; };
 		A5B66C64199B507800CA1A2D /* TTTAttributedLabel.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TTTAttributedLabel.m; sourceTree = "<group>"; };
+		A5BCC8B119A6DBFC00C91CBF /* YHETextSelectionView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YHETextSelectionView.h; sourceTree = "<group>"; };
+		A5BCC8B219A6DBFC00C91CBF /* YHETextSelectionView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YHETextSelectionView.m; sourceTree = "<group>"; };
+		A5BCC8B419A6EA9200C91CBF /* YHECoreTextView.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = YHECoreTextView.bundle; sourceTree = "<group>"; };
+		A5BCC8B619A70DCE00C91CBF /* YHETextSelectionGrabber.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YHETextSelectionGrabber.h; sourceTree = "<group>"; };
+		A5BCC8B719A70DCE00C91CBF /* YHETextSelectionGrabber.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YHETextSelectionGrabber.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -193,10 +201,15 @@
 		A5A7924F19A58414008DE999 /* YHECoreText */ = {
 			isa = PBXGroup;
 			children = (
+				A5BCC8B419A6EA9200C91CBF /* YHECoreTextView.bundle */,
 				A5A7925019A58414008DE999 /* YHECaretView.h */,
 				A5A7925119A58414008DE999 /* YHECaretView.m */,
 				A5A7925219A58414008DE999 /* YHETextContainerView.h */,
 				A5A7925319A58414008DE999 /* YHETextContainerView.m */,
+				A5BCC8B119A6DBFC00C91CBF /* YHETextSelectionView.h */,
+				A5BCC8B219A6DBFC00C91CBF /* YHETextSelectionView.m */,
+				A5BCC8B619A70DCE00C91CBF /* YHETextSelectionGrabber.h */,
+				A5BCC8B719A70DCE00C91CBF /* YHETextSelectionGrabber.m */,
 				A5A7925419A58414008DE999 /* YHETextPosition.h */,
 				A5A7925519A58414008DE999 /* YHETextPosition.m */,
 				A5A7925619A58414008DE999 /* YHETextRange.h */,
@@ -295,6 +308,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A5BCC8B519A6EA9200C91CBF /* YHECoreTextView.bundle in Resources */,
 				A52007F9199A02D200DAD449 /* Images.xcassets in Resources */,
 				A52007EB199A02D200DAD449 /* InfoPlist.strings in Resources */,
 				A52007F4199A02D200DAD449 /* Main.storyboard in Resources */,
@@ -319,9 +333,11 @@
 			files = (
 				A5A7925E19A58414008DE999 /* YHETextView.m in Sources */,
 				A542DEF319A61FAD0003F0C1 /* YHETextMagnifierCaret.m in Sources */,
+				A5BCC8B819A70DCE00C91CBF /* YHETextSelectionGrabber.m in Sources */,
 				A52007F7199A02D200DAD449 /* YHEViewController.m in Sources */,
 				A5A7925D19A58414008DE999 /* YHETextRange.m in Sources */,
 				A52007ED199A02D200DAD449 /* main.m in Sources */,
+				A5BCC8B319A6DBFC00C91CBF /* YHETextSelectionView.m in Sources */,
 				A52007F1199A02D200DAD449 /* YHEAppDelegate.m in Sources */,
 				A5A7925A19A58414008DE999 /* YHECaretView.m in Sources */,
 				A5A7925C19A58414008DE999 /* YHETextPosition.m in Sources */,

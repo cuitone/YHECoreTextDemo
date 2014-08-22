@@ -39,6 +39,8 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
     [self.attributes setObject:_font forKey:NSFontAttributeName];
     _caretView = [[YHECaretView alloc] initWithFrame:CGRectZero];
     _regexDict = [[NSMutableDictionary alloc] init];
+    
+
 }
 
 #pragma mark - 属性存取器重写
@@ -102,13 +104,13 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
 
 - (void)drawRect:(CGRect)rect
 {
-    [self drawRangeAsSelectedOrMarkedRange:_markedTextRange];
-    [self drawRangeAsSelectedOrMarkedRange:_selectedTextRange];
+    [self drawRangeAsSelectedOrMarkedRange:_markedTextRange withRect:rect];
+    [self drawRangeAsSelectedOrMarkedRange:_selectedTextRange withRect:rect];
     [self drawTextInRect:rect];
 }
 
 //绘制当前正在编辑文本的会话或绘制选择的文本区域
-- (void)drawRangeAsSelectedOrMarkedRange:(NSRange)range
+- (void)drawRangeAsSelectedOrMarkedRange:(NSRange)range withRect:(CGRect)rect
 {
     if (!self.editing) {return;}
     
@@ -128,45 +130,13 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
         if (interSection.location != NSNotFound && interSection.length >0) {
             CGFloat xStart = CTLineGetOffsetForStringIndex(line, interSection.location, NULL);
             CGFloat xEnd = CTLineGetOffsetForStringIndex(line, interSection.location + interSection.length, NULL);
-            
             CGPoint lineOrigin = lineOrigins[i];
             CGFloat ascent,descent;
             CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
-            
             CGRect markedRect = CGRectMake(xStart, lineOrigin.y-descent, xEnd-xStart, ascent + descent);
             UIRectFill(markedRect);
         }
     }
-}
-
-+ (NSRange)RangeIntersection:(NSRange)first WithSecond:(NSRange)second
-{
-    NSRange result = NSMakeRange(NSNotFound, 0);
-    //总共应该有5种情况,因为关于中心对称，所以可以更换两个位置取交集
-    if (first.location>second.location) {
-        NSRange tmp = first;
-        first = second;
-        second = tmp;
-    }
-    //交换之后始终second.location在first.location的后面
-    if (second.location < first.location + first.length) {
-        result.location = second.location;
-        NSUInteger end = MIN(first.location+first.length, second.location + second.length);
-        result.length = end-result.location;
-    }
-    
-    return result;
-}
-
-+ (NSRange)RangeEncapsulateWithIntersection:(NSRange)first WithSecond:(NSRange)second
-{
-    NSRange result = [YHETextContainerView RangeIntersection:first WithSecond:second];
-    if (result.location != NSNotFound) {
-        result.location = MIN(first.location, second.location);
-        NSInteger end = MAX(first.location+first.length, second.location + second.length);
-        result.length = end - result.location;
-    }
-    return result;
 }
 
 //绘制界面上的文本
@@ -177,15 +147,18 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
     CTFrameRef ctFrame = _ctFrame;
     
     CFArrayRef lines = CTFrameGetLines(ctFrame);
+    NSInteger linesCount = CFArrayGetCount(lines);
+    CGPoint lineOrigins[linesCount];
+    CTFrameGetLineOrigins(ctFrame, CFRangeMake(0, 0), lineOrigins);
     
     for (int i = 0; i < CFArrayGetCount(lines); i++) {
         CTLineRef line = CFArrayGetValueAtIndex(lines, i);
-        CGPoint lineOrigin = CGPointZero; //lineOrigins[i];
+        CGPoint lineOrigin =lineOrigins[i];
         /**
          *  无论有没有emoji,行高是一样的。行高的计算是从左下角为坐标系统原点，绘制时文字是反向的，所以ascender在下面，而descender在上面。第0个起始点应该是
          *  bounds.size.height-ascender;
          */
-        lineOrigin.y = rect.size.height-self.font.ascender - self.font.lineHeight*i;
+//        lineOrigin.y = rect.size.height-self.font.ascender - self.font.lineHeight*i;
         CGContextSetTextPosition(context, lineOrigin.x, lineOrigin.y);
         CTLineDraw(line, context);
         [self drawEmotionsWithContext:context ForLine:line withLineOrigin:lineOrigin];
@@ -225,6 +198,37 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
     }
 }
 
+#pragma mark - 区域计算
++ (NSRange)RangeIntersection:(NSRange)first WithSecond:(NSRange)second
+{
+    NSRange result = NSMakeRange(NSNotFound, 0);
+    //总共应该有5种情况,因为关于中心对称，所以可以更换两个位置取交集
+    if (first.location>second.location) {
+        NSRange tmp = first;
+        first = second;
+        second = tmp;
+    }
+    //交换之后始终second.location在first.location的后面
+    if (second.location < first.location + first.length) {
+        result.location = second.location;
+        NSUInteger end = MIN(first.location+first.length, second.location + second.length);
+        result.length = end-result.location;
+    }
+    
+    return result;
+}
+
++ (NSRange)RangeEncapsulateWithIntersection:(NSRange)first WithSecond:(NSRange)second
+{
+    NSRange result = [YHETextContainerView RangeIntersection:first WithSecond:second];
+    if (result.location != NSNotFound) {
+        result.location = MIN(first.location, second.location);
+        NSInteger end = MAX(first.location+first.length, second.location + second.length);
+        result.length = end - result.location;
+    }
+    return result;
+}
+
 
 #pragma mark - 文本预处理
 - (void)textChanged
@@ -254,6 +258,7 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
         return;
     }
     
+    
     if (self.selectedTextRange.length == 0) {
         self.caretView.frame = [self caretRectForPosition:self.selectedTextRange.location];
         if (self.caretView.superview == nil) {
@@ -271,6 +276,17 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
     
     if (self.markedTextRange.location != NSNotFound) {
         [self setNeedsDisplay];
+    }
+    
+    if (self.selectedTextRange.length>0) {
+        CGRect startGaberRect = [self caretRectForPosition:self.selectedTextRange.location];
+        CGRect endGaberRect = [self caretRectForPosition:NSMaxRange(self.selectedTextRange)];
+        [self.textSelectionView setStartFrame:startGaberRect endFrame:endGaberRect];
+        [self.textSelectionView showGarbers];
+    }
+    else
+    {
+        [self.textSelectionView hideGarbers];
     }
 }
 
@@ -371,8 +387,8 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
         CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
         CTFrameGetLineOrigins(_ctFrame, CFRangeMake(linesCount - 1, 0), &lineOrigin);
 		// Place point after last line, including any font leading spacing if applicable.
-        lineOrigin.y = self.bounds.size.height-self.font.ascender - self.font.lineHeight*(linesCount-1);
-        lineOrigin.y -= self.font.leading;
+//        lineOrigin.y = self.bounds.size.height-self.font.ascender - self.font.lineHeight*(linesCount-1);
+//        lineOrigin.y -= self.font.leading;
         
         CGFloat xPos = CTLineGetOffsetForStringIndex(line, range.location, NULL);
         return CGRectMake(xPos, lineOrigin.y - descent, 3, ascent + descent);
@@ -387,7 +403,7 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
         if (localIndex >= 0 && localIndex <= range.length) {
             
             CGPoint lineOrigin = lineOrigins[linesIndex];
-            lineOrigin.y = self.bounds.size.height-self.font.ascender - self.font.lineHeight*linesIndex;
+//            lineOrigin.y = self.bounds.size.height-self.font.ascender - self.font.lineHeight*linesIndex;
             
             CGFloat ascent= 0.0f, descent = 0.0f;
             CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
@@ -411,13 +427,15 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
      */
     CFArrayRef lines = CTFrameGetLines(_ctFrame);
     CFIndex linesCount = CFArrayGetCount(lines);
-    CGPoint origins[linesCount];
+    CGPoint lineOrigins[linesCount];
     
-    CTFrameGetLineOrigins(_ctFrame, CFRangeMake(0, linesCount), origins);
+    CTFrameGetLineOrigins(_ctFrame, CFRangeMake(0, linesCount), lineOrigins);
     
     for (CFIndex linesIndex = 0; linesIndex < linesCount; linesIndex++) {
-        if (point.y > origins[linesIndex].y) {
+        CGPoint lineOrigin = lineOrigins[linesIndex];
+        if (point.y > lineOrigin.y) {
 			// This line origin is closest to the y-coordinate of our point; now look for the closest string index in this line.
+            
             CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex(lines, linesIndex);
             return CTLineGetStringIndexForPosition(line, point);
         }
