@@ -22,6 +22,8 @@
 		A520080A199A02D200DAD449 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A5200808199A02D200DAD449 /* InfoPlist.strings */; };
 		A520080C199A02D200DAD449 /* CoreTextDemoTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A520080B199A02D200DAD449 /* CoreTextDemoTests.m */; };
 		A5200819199A067600DAD449 /* CoreText.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A5200818199A067600DAD449 /* CoreText.framework */; };
+		A53A5CBE19A97436009C8A2B /* publish_face_B1@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = A53A5CBC19A97436009C8A2B /* publish_face_B1@2x.png */; };
+		A53A5CBF19A97436009C8A2B /* publish_face_B2@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = A53A5CBD19A97436009C8A2B /* publish_face_B2@2x.png */; };
 		A542DEF319A61FAD0003F0C1 /* YHETextMagnifierCaret.m in Sources */ = {isa = PBXBuildFile; fileRef = A542DEF219A61FAD0003F0C1 /* YHETextMagnifierCaret.m */; };
 		A569C309199A200A00F26838 /* homepage_lbs_icon@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = A569C308199A200A00F26838 /* homepage_lbs_icon@2x.png */; };
 		A5A7925A19A58414008DE999 /* YHECaretView.m in Sources */ = {isa = PBXBuildFile; fileRef = A5A7925119A58414008DE999 /* YHECaretView.m */; };
@@ -66,6 +68,8 @@
 		A5200809199A02D200DAD449 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		A520080B199A02D200DAD449 /* CoreTextDemoTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CoreTextDemoTests.m; sourceTree = "<group>"; };
 		A5200818199A067600DAD449 /* CoreText.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreText.framework; path = System/Library/Frameworks/CoreText.framework; sourceTree = SDKROOT; };
+		A53A5CBC19A97436009C8A2B /* publish_face_B1@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "publish_face_B1@2x.png"; sourceTree = "<group>"; };
+		A53A5CBD19A97436009C8A2B /* publish_face_B2@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "publish_face_B2@2x.png"; sourceTree = "<group>"; };
 		A542DEF119A61FAD0003F0C1 /* YHETextMagnifierCaret.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YHETextMagnifierCaret.h; sourceTree = "<group>"; };
 		A542DEF219A61FAD0003F0C1 /* YHETextMagnifierCaret.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YHETextMagnifierCaret.m; sourceTree = "<group>"; };
 		A569C308199A200A00F26838 /* homepage_lbs_icon@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "homepage_lbs_icon@2x.png"; sourceTree = "<group>"; };
@@ -147,6 +151,8 @@
 		A52007E6199A02D200DAD449 /* CoreTextDemo */ = {
 			isa = PBXGroup;
 			children = (
+				A53A5CBC19A97436009C8A2B /* publish_face_B1@2x.png */,
+				A53A5CBD19A97436009C8A2B /* publish_face_B2@2x.png */,
 				A52007EF199A02D200DAD449 /* YHEAppDelegate.h */,
 				A52007F0199A02D200DAD449 /* YHEAppDelegate.m */,
 				A52007F2199A02D200DAD449 /* Main.storyboard */,
@@ -308,8 +314,10 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A53A5CBF19A97436009C8A2B /* publish_face_B2@2x.png in Resources */,
 				A5BCC8B519A6EA9200C91CBF /* YHECoreTextView.bundle in Resources */,
 				A52007F9199A02D200DAD449 /* Images.xcassets in Resources */,
+				A53A5CBE19A97436009C8A2B /* publish_face_B1@2x.png in Resources */,
 				A52007EB199A02D200DAD449 /* InfoPlist.strings in Resources */,
 				A52007F4199A02D200DAD449 /* Main.storyboard in Resources */,
 				A569C309199A200A00F26838 /* homepage_lbs_icon@2x.png in Resources */,
