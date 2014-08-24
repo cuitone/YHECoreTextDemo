@@ -319,13 +319,39 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
         if (shouldDrawEmotion) {
             CTRunDelegateRef runDelegate = [self runDelegateForImage:(__bridge void *)(checkingStr)];
             //逻辑定义要求占位字符串长度与替换前字符串长度一致
-            NSMutableAttributedString *placeHolderAttributeStr = [[NSMutableAttributedString alloc] initWithString:@"    " attributes:@{@"YHECustomEmotion": checkingStr}];
+            NSMutableAttributedString *placeHolderAttributeStr = [[NSMutableAttributedString alloc] initWithString:@"...." attributes:@{@"YHECustomEmotion": checkingStr}];
             [placeHolderAttributeStr addAttribute:(__bridge NSString *)kCTRunDelegateAttributeName value:(id)CFBridgingRelease(runDelegate) range:NSMakeRange(0, placeHolderAttributeStr.length)];
             [attributeString replaceCharactersInRange:checkingResult.range withAttributedString:placeHolderAttributeStr];
         }
     }
     
+    CTParagraphStyleRef paragraphStyle = [self parserTextParagraphStyle];
+    [attributeString addAttribute:(__bridge NSString *)kCTParagraphStyleAttributeName value:(__bridge id)paragraphStyle range:NSMakeRange(0, attributeString.length)];
+    
     return attributeString;
+}
+
+- (CTParagraphStyleRef)parserTextParagraphStyle
+{
+    CTLineBreakMode lineBreakMode = kCTLineBreakByWordWrapping;
+    CTTextAlignment textAlignment = kCTTextAlignmentLeft;
+    CGFloat headLineIdent = 3.0;
+    CGFloat minLineHeight = 17.0;
+    CGFloat maxLineHeight = 23.0;
+    CGFloat minLineSpacing = 0.0;
+    CGFloat maxLineSpacing = 0.0;
+    
+    CTParagraphStyleSetting styleSetting[] = {
+        {kCTParagraphStyleSpecifierLineBreakMode,sizeof(CTLineBreakMode),(const void *)&lineBreakMode},
+        {kCTParagraphStyleSpecifierAlignment,sizeof(CTTextAlignment),(const void *)&textAlignment},
+        {kCTParagraphStyleSpecifierMinimumLineSpacing,sizeof(CGFloat),(const void *)&minLineSpacing},
+        {kCTParagraphStyleSpecifierMaximumLineSpacing,sizeof(CGFloat),(const void *)&maxLineSpacing},
+        {kCTParagraphStyleSpecifierMinimumLineHeight,sizeof(CGFloat),(const void *)&minLineHeight},
+        {kCTParagraphStyleSpecifierMaximumLineHeight,sizeof(CGFloat),(const void *)&maxLineHeight}
+    };
+    
+    CTParagraphStyleRef styleRef = CTParagraphStyleCreate(styleSetting, sizeof(styleSetting));
+    return styleRef;
 }
 
 #pragma mark -
@@ -363,12 +389,13 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
 
 - (CGRect)caretRectForPosition:(int )index
 {
-    // Special case, no text.
+    index = MIN(self.text.length, index);
+    // 如果没有文本的特殊情交
     if (self.text.length == 0) {
         CGPoint origin = CGPointMake(CGRectGetMinX(self.bounds), CGRectGetMaxY(self.bounds) - self.font.leading);
 		// Note: using fabs() for typically negative descender from fonts.
         
-        return CGRectMake(origin.x, origin.y - fabs(self.font.descender), 3, self.font.ascender + fabs(self.font.descender));
+        return CGRectMake(origin.x, origin.y - fabs(self.font.descender), CGRectGetWidth(self.caretView.bounds), self.font.ascender + fabs(self.font.descender));
     }
     
 	// Iterate over our CTLines, looking for the line that encompasses the given range.
@@ -377,7 +404,7 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
     CGPoint lineOrigins[linesCount];
     CTFrameGetLineOrigins(_ctFrame, CFRangeMake(0, 0), lineOrigins);
     
-    // 特殊情况，插入点正好要开始新的一行
+    // 特殊情况，插入点正好在最后并要开始新的一行
     if (index == self.text.length && [self.text characterAtIndex:(index - 1)] == '\n') {
         CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex(lines, linesCount -1);
         CFRange range = CTLineGetStringRange(line);
@@ -386,24 +413,26 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
         CGFloat ascent, descent;
         CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
         CTFrameGetLineOrigins(_ctFrame, CFRangeMake(linesCount - 1, 0), &lineOrigin);
-		// Place point after last line, including any font leading spacing if applicable.
-//        lineOrigin.y = self.bounds.size.height-self.font.ascender - self.font.lineHeight*(linesCount-1);
-//        lineOrigin.y -= self.font.leading;
         
         CGFloat xPos = CTLineGetOffsetForStringIndex(line, range.location, NULL);
         return CGRectMake(xPos, lineOrigin.y - descent, 3, ascent + descent);
     }
     
     // 正常情况，插入点在文本中间
+    // 如果选中位置的前一个字符串是回车符，计算加1的位置
+    if (index>0 && [self.text characterAtIndex:(index - 1)] == '\n') {
+        index += 1;
+    }
+    
     for (CFIndex linesIndex = 0; linesIndex < linesCount; linesIndex++) {
+        
         CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex(lines, linesIndex);
         CFRange range = CTLineGetStringRange(line);
-        NSInteger localIndex = index - range.location;
+//        NSInteger localIndex = index - range.location;
         //计算索引是不是在本行
-        if (localIndex >= 0 && localIndex <= range.length) {
+        if (index >= range.location && index < range.location + range.length) {
             
             CGPoint lineOrigin = lineOrigins[linesIndex];
-//            lineOrigin.y = self.bounds.size.height-self.font.ascender - self.font.lineHeight*linesIndex;
             
             CGFloat ascent= 0.0f, descent = 0.0f;
             CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
