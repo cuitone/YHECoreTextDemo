@@ -27,7 +27,7 @@
 
 @interface YHETextContainerView : UIView
 
-@property (nonatomic, copy) NSString *text;
+@property (nonatomic, copy) NSMutableAttributedString *attrText;
 
 @property (nonatomic, strong) UIFont *font;
 

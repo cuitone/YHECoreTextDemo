@@ -31,7 +31,7 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
 {
     self.layer.geometryFlipped = YES;
     //注意要使用存取器
-    self.text = @"";
+    self.attrText = [[NSMutableAttributedString alloc] init];
     self.font = [UIFont systemFontOfSize:17.0f];
     [self setBackgroundColor:[UIColor clearColor]];
     self.markColor = [UIColor blueColor];
@@ -40,7 +40,6 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
     _caretView = [[YHECaretView alloc] initWithFrame:CGRectZero];
     _regexDict = [[NSMutableDictionary alloc] init];
     
-
 }
 
 #pragma mark - 属性存取器重写
@@ -63,9 +62,9 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
     [self.delegate containerViewDidChangeFrame:self];
 }
 
-- (void)setText:(NSString *)text
+- (void)setAttrText:(NSMutableAttributedString *)attrText
 {
-    _text = [text copy];
+    _attrText = attrText;
     [self textChanged];
 }
 
@@ -154,11 +153,6 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
     for (int i = 0; i < CFArrayGetCount(lines); i++) {
         CTLineRef line = CFArrayGetValueAtIndex(lines, i);
         CGPoint lineOrigin =lineOrigins[i];
-        /**
-         *  无论有没有emoji,行高是一样的。行高的计算是从左下角为坐标系统原点，绘制时文字是反向的，所以ascender在下面，而descender在上面。第0个起始点应该是
-         *  bounds.size.height-ascender;
-         */
-//        lineOrigin.y = rect.size.height-self.font.ascender - self.font.lineHeight*i;
         CGContextSetTextPosition(context, lineOrigin.x, lineOrigin.y);
         CTLineDraw(line, context);
         [self drawEmotionsWithContext:context ForLine:line withLineOrigin:lineOrigin];
@@ -238,7 +232,8 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
     [self setNeedsDisplay];
     [self clearPreviousLayoutInfomation];
     
-    NSAttributedString *attributeString = [self parserTextForDraw];//[[NSAttributedString alloc] initWithString:_text attributes:_attributes];
+    NSMutableAttributedString *attributeString = [[NSMutableAttributedString alloc] initWithAttributedString:_attrText];
+    [attributeString addAttributes:_attributes range:NSMakeRange(0, _attrText.length)];
     
     if (_ctFrameSetter) {
         CFRelease(_ctFrameSetter);
@@ -299,88 +294,66 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
     _ctFrame = CTFramesetterCreateFrame(_ctFrameSetter, CFRangeMake(0, 0), [path CGPath], NULL);
 }
 
-- (NSAttributedString *)parserTextForDraw
-{
-    NSMutableAttributedString *attributeString = [[NSMutableAttributedString alloc] initWithString:_text attributes:_attributes];
-    NSString *yohoEmotionPattern = self.regexDict[kRegexYohoEmotion];
-    if (!yohoEmotionPattern || yohoEmotionPattern.length == 0) {
-        return attributeString;
-    }
-    NSError *error = nil;
-    //通过正则表达式匹配字符串
-    NSRegularExpression *yohoEmotionRegular = [NSRegularExpression regularExpressionWithPattern:yohoEmotionPattern options:NSRegularExpressionDotMatchesLineSeparators error:&error];
-    NSArray *checkingResults = [yohoEmotionRegular matchesInString:attributeString.string options:NSMatchingReportCompletion range:NSMakeRange(0,attributeString.length)];
-    //倒着替换，这样就不会使一次替换后range发生变化
-    for (int row = checkingResults.count-1;row>=0;row--) {
-        NSTextCheckingResult *checkingResult = checkingResults[row];
-        NSString *checkingStr = [attributeString.string substringWithRange:checkingResult.range];
-        checkingStr = [checkingStr substringWithRange:NSMakeRange(1, 2)];
-        BOOL shouldDrawEmotion = [self.delegate containerView:self shouldDrawEmotionWithTag:checkingStr];
-        if (shouldDrawEmotion) {
-            CTRunDelegateRef runDelegate = [self runDelegateForImage:(__bridge void *)(checkingStr)];
-            //逻辑定义要求占位字符串长度与替换前字符串长度一致
-            NSMutableAttributedString *placeHolderAttributeStr = [[NSMutableAttributedString alloc] initWithString:@"...." attributes:@{@"YHECustomEmotion": checkingStr}];
-            [placeHolderAttributeStr addAttribute:(__bridge NSString *)kCTRunDelegateAttributeName value:(id)CFBridgingRelease(runDelegate) range:NSMakeRange(0, placeHolderAttributeStr.length)];
-            [attributeString replaceCharactersInRange:checkingResult.range withAttributedString:placeHolderAttributeStr];
-        }
-    }
-    
-    CTParagraphStyleRef paragraphStyle = [self parserTextParagraphStyle];
-    [attributeString addAttribute:(__bridge NSString *)kCTParagraphStyleAttributeName value:(__bridge id)paragraphStyle range:NSMakeRange(0, attributeString.length)];
-    
-    return attributeString;
-}
-
-- (CTParagraphStyleRef)parserTextParagraphStyle
-{
-    CTLineBreakMode lineBreakMode = kCTLineBreakByWordWrapping;
-    CTTextAlignment textAlignment = kCTTextAlignmentLeft;
-    CGFloat headLineIdent = 3.0;
-    CGFloat minLineHeight = 17.0;
-    CGFloat maxLineHeight = 23.0;
-    CGFloat minLineSpacing = 0.0;
-    CGFloat maxLineSpacing = 0.0;
-    
-    CTParagraphStyleSetting styleSetting[] = {
-        {kCTParagraphStyleSpecifierLineBreakMode,sizeof(CTLineBreakMode),(const void *)&lineBreakMode},
-        {kCTParagraphStyleSpecifierAlignment,sizeof(CTTextAlignment),(const void *)&textAlignment},
-        {kCTParagraphStyleSpecifierMinimumLineSpacing,sizeof(CGFloat),(const void *)&minLineSpacing},
-        {kCTParagraphStyleSpecifierMaximumLineSpacing,sizeof(CGFloat),(const void *)&maxLineSpacing},
-        {kCTParagraphStyleSpecifierMinimumLineHeight,sizeof(CGFloat),(const void *)&minLineHeight},
-        {kCTParagraphStyleSpecifierMaximumLineHeight,sizeof(CGFloat),(const void *)&maxLineHeight}
-    };
-    
-    CTParagraphStyleRef styleRef = CTParagraphStyleCreate(styleSetting, sizeof(styleSetting));
-    return styleRef;
-}
-
 #pragma mark -
 
 #pragma mark - 绘制界面文本选中,光标等几何计算
 - (CGRect)firstRectForRange:(NSRange)range
 {
-    NSInteger index = range.location;
+   /* NSInteger index = range.location;
     
     CFArrayRef lines = CTFrameGetLines(_ctFrame);
     NSInteger linesCount = CFArrayGetCount(lines);
     
-    for (int lineIndex = 0 ; lineIndex < linesCount ; lineIndex++) {
-        CTLineRef line = CFArrayGetValueAtIndex(lines, lineIndex);
+    CGPoint origin;
+
+    
+    for (CFIndex lineIndex=0 ; lineIndex < linesCount ; lineIndex++) {
+        CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex(lines, lineIndex);
         CFRange lineRange = CTLineGetStringRange(line);
         NSInteger localIndex = index - lineRange.location;
-        
-        //找到的起始点是在这一行里
-        if (localIndex>0&&localIndex < lineRange.length) {
+        if (localIndex >=0 && localIndex < lineRange.length) {
             NSInteger finalIndex = MIN(lineRange.location+lineRange.length, range.location + range.length);
             
+            CFRange range = CFRangeMake(0, 0);
+            range.location = lineIndex;
+
+            CTFrameGetLineOrigins(_ctFrame, range, &origin);
+            
+            CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
             CGFloat xStart = CTLineGetOffsetForStringIndex(line, index, NULL);
             CGFloat xEnd = CTLineGetOffsetForStringIndex(line, finalIndex, NULL);
             
-            CGPoint origin;
-            CTFrameGetLineOrigins(_ctFrame, CFRangeMake(lineIndex, 0), &origin);
-            CGFloat ascent,descent;
-            CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
             return CGRectMake(xStart, origin.y - descent, xEnd-xStart, ascent + descent);
+        }
+    }
+    
+    return CGRectNull;*/
+    
+    NSInteger index = range.location;
+    
+	// Iterate over the CTLines, looking for the line that encompasses the given range.
+    CFArrayRef lines = CTFrameGetLines(_ctFrame);
+    NSInteger linesCount = CFArrayGetCount(lines);
+    
+    for (CFIndex linesIndex = 0; linesIndex < linesCount; linesIndex++) {
+        
+        CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex(lines, linesIndex);
+        CFRange lineRange = CTLineGetStringRange(line);
+        NSInteger localIndex = index - lineRange.location;
+        
+        if (localIndex >= 0 && localIndex < lineRange.length) {
+			// For this sample, we use just the first line that intersects range.
+            NSInteger finalIndex = MIN(lineRange.location + lineRange.length, range.location + range.length);
+			// Create a rect for the given range within this line.
+            CGFloat xStart = CTLineGetOffsetForStringIndex(line, index, NULL);
+            CGFloat xEnd = CTLineGetOffsetForStringIndex(line, finalIndex, NULL);
+
+            CGFloat ascent, descent;
+            CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
+            
+            CGPoint origin;
+            CTFrameGetLineOrigins(_ctFrame, CFRangeMake(linesIndex, 0), &origin);
+            return CGRectMake(xStart, origin.y - descent, xEnd - xStart, ascent + descent);
         }
     }
     
@@ -389,9 +362,9 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
 
 - (CGRect)caretRectForPosition:(int )index
 {
-    index = MIN(self.text.length, index);
+    index = MIN(self.attrText.length, index);
     // 如果没有文本的特殊情交
-    if (self.text.length == 0) {
+    if (self.attrText.length == 0) {
         CGPoint origin = CGPointMake(CGRectGetMinX(self.bounds), CGRectGetMaxY(self.bounds) - self.font.leading);
 		// Note: using fabs() for typically negative descender from fonts.
         
@@ -405,7 +378,7 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
     CTFrameGetLineOrigins(_ctFrame, CFRangeMake(0, 0), lineOrigins);
     
     // 特殊情况，插入点正好在最后并要开始新的一行
-    if (index == self.text.length && [self.text characterAtIndex:(index - 1)] == '\n') {
+    if (index == self.attrText.length && [self.attrText.string characterAtIndex:(index - 1)] == '\n') {
         CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex(lines, linesCount -1);
         CFRange range = CTLineGetStringRange(line);
 
@@ -420,7 +393,7 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
     
     // 正常情况，插入点在文本中间
     // 如果选中位置的前一个字符串是回车符，计算加1的位置
-    if (index>0 && [self.text characterAtIndex:(index - 1)] == '\n') {
+    if (index>0 && [self.attrText.string characterAtIndex:(index - 1)] == '\n') {
         index += 1;
     }
     
@@ -470,7 +443,7 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
         }
     }
     
-    return  self.text.length;
+    return  self.attrText.length;
 }
 
 - (NSInteger)closestIndexForRichTextFromPoint:(CGPoint)point
@@ -481,7 +454,7 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
         NSError *error = nil;
         //通过正则表达式匹配字符串
         NSRegularExpression *yohoEmotionRegular = [NSRegularExpression regularExpressionWithPattern:yohoEmotionPattern options:NSRegularExpressionDotMatchesLineSeparators error:&error];
-        NSArray *checkingResults = [yohoEmotionRegular matchesInString:_text options:NSMatchingReportCompletion range:NSMakeRange(0,_text.length)];
+        NSArray *checkingResults = [yohoEmotionRegular matchesInString:_attrText.string options:NSMatchingReportCompletion range:NSMakeRange(0,_attrText.length)];
         for (NSTextCheckingResult *textCheckingResult in checkingResults) {
             if ((index>textCheckingResult.range.location)&&(index<textCheckingResult.range.location+textCheckingResult.range.length)) {
                 index = textCheckingResult.range.location + textCheckingResult.range.length;
@@ -490,41 +463,6 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
     }
     return index;
 }
-
-#pragma mark - CTRunDelegateCallBack
-#pragma mark - 绘制自定义表情的几何回调
-- (CTRunDelegateRef)runDelegateForImage:(void *)refCon
-{
-    CTRunDelegateCallbacks imageCallBacks;
-    imageCallBacks.dealloc = RunDelegateDeallocCallBack;
-    imageCallBacks.version = kCTRunDelegateVersion1;
-    imageCallBacks.getAscent = RunDelegateGetAscentCallback;
-    imageCallBacks.getDescent = RunDelegateGetDescentCallback;
-    imageCallBacks.getWidth = RunDelegateGetWidthCallback;
-    CTRunDelegateRef runDelegate = CTRunDelegateCreate(&imageCallBacks,refCon);
-    return runDelegate;
-}
-
-void RunDelegateDeallocCallBack(void *refCon)
-{
-    
-}
-
-CGFloat RunDelegateGetAscentCallback(void *refCon)
-{
-    return 13.7f;
-}
-
-CGFloat RunDelegateGetDescentCallback(void *refCon)
-{
-    return 3.3f;
-}
-
-CGFloat RunDelegateGetWidthCallback(void *refCon)
-{
-    return 5.0f;
-}
-
 
 #pragma mark -
 
@@ -540,5 +478,7 @@ CGFloat RunDelegateGetWidthCallback(void *refCon)
         _ctFrame = NULL;
     }
 }
+
+
 
 @end

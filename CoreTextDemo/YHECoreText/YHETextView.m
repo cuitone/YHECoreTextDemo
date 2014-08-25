@@ -20,7 +20,7 @@
 <UIGestureRecognizerDelegate,YHETextContainerViewDelegate>
 {
     YHETextContainerView *_textContainerView;
-    NSMutableString *_mutableText;
+     NSMutableAttributedString *_mutableAttrText;
 }
 
 @property (nonatomic,strong) UITextInputStringTokenizer *tokenizer;
@@ -80,7 +80,7 @@
     
     self.text = @"";
     _tokenizer = [[UITextInputStringTokenizer alloc] initWithTextInput:self];
-    _mutableText = [[NSMutableString alloc] init];
+    _mutableAttrText = [[NSMutableAttributedString alloc] init];
     
 }
 
@@ -143,7 +143,7 @@
     if (self.isFirstResponder) {
         [self.inputDelegate selectionWillChange:self];
         
-        NSInteger index = [_textContainerView closestIndexForRichTextFromPoint:[tap locationInView:_textContainerView]];
+        NSInteger index = [_textContainerView closestIndexToPoint:[tap locationInView:_textContainerView]];
         //点击屏幕后使markedTextRange.location＝NSNotFound,这样输入汉字的时候就不会从起始点开始了
         _textContainerView.markedTextRange = NSMakeRange(NSNotFound, 0);
         _textContainerView.selectedTextRange = NSMakeRange(index, 0);
@@ -155,7 +155,7 @@
         [self becomeFirstResponder];
         _textContainerView.editing = YES;
         
-        NSInteger index = [_textContainerView closestIndexForRichTextFromPoint:[tap locationInView:_textContainerView]];
+        NSInteger index = [_textContainerView closestIndexToPoint:[tap locationInView:_textContainerView]];
         //点击屏幕后使markedTextRange.location＝NSNotFound,这样输入汉字的时候就不会从起始点开始了
         _textContainerView.markedTextRange = NSMakeRange(NSNotFound, 0);
         _textContainerView.selectedTextRange = NSMakeRange(index, 0);
@@ -291,18 +291,21 @@
 {
     NSRange selectedTextRange = _textContainerView.selectedTextRange;
     if (selectedTextRange.length>0) {
-        NSString *subText = [_mutableText substringWithRange:selectedTextRange];
+        NSAttributedString *subAttrText = [_mutableAttrText attributedSubstringFromRange:selectedTextRange];
+        NSString *subText = [self reverseTextFromAttrText:subAttrText];
         UIPasteboard *pasteBoard = [UIPasteboard generalPasteboard];
         pasteBoard.string = subText;
         [self insertText:@""];
     }
 }
 
+
 - (void)copy:(id)sender
 {
     NSRange selectedTextRange = _textContainerView.selectedTextRange;
     if (selectedTextRange.length>0) {
-        NSString *subText = [_mutableText substringWithRange:selectedTextRange];
+        NSAttributedString *subAttrText = [_mutableAttrText attributedSubstringFromRange:selectedTextRange];
+        NSString *subText = [self reverseTextFromAttrText:subAttrText];
         UIPasteboard *pasteBoard = [UIPasteboard generalPasteboard];
         pasteBoard.string = subText;
     }
@@ -325,7 +328,7 @@
 
 - (void)selectAll:(id)sender
 {
-    _textContainerView.selectedTextRange = NSMakeRange(0, _mutableText.length);
+    _textContainerView.selectedTextRange = NSMakeRange(0, _mutableAttrText.length);
 }
 
 #pragma mark - 属性存取器重写
@@ -334,11 +337,13 @@
 {
     if (_text != text) {
         _text = [text copy];
-        [_mutableText replaceCharactersInRange:NSMakeRange(0, _mutableText.length) withString:_text];
-        _textContainerView.text = text;
+        _mutableAttrText = [[NSMutableAttributedString alloc] initWithString:text attributes:nil];
+        NSRange startRange = NSMakeRange(0, _mutableAttrText.length);
+        _mutableAttrText = [self parserTextForDrawWithAttributedText:_mutableAttrText withSelectedTextRange:&startRange];
+        _textContainerView.attrText = _mutableAttrText;
         
         NSRange markedTextRange = NSMakeRange(NSNotFound, 0);
-        NSRange selectedTextRange = NSMakeRange(_text.length, 0);
+        NSRange selectedTextRange = NSMakeRange(_mutableAttrText.length, 0);
         _textContainerView.selectedTextRange = selectedTextRange;
         _textContainerView.markedTextRange = markedTextRange;
 
@@ -348,7 +353,7 @@
 
 - (NSString *)text
 {
-    return _mutableText;
+    return [self reverseTextFromAttrText:_mutableAttrText];
 }
 
 - (void)setFont:(UIFont *)font
@@ -401,7 +406,7 @@
 - (NSString *)textInRange:(UITextRange *)range
 {
     YHETextRange *textRange = (YHETextRange *)range;
-    return [_mutableText substringWithRange:textRange.range];
+    return [_mutableAttrText.string substringWithRange:textRange.range];
 }
 
 
@@ -418,10 +423,10 @@
         
     }
     
-    [_mutableText replaceCharactersInRange:textRange.range withString:text];
+    [_mutableAttrText replaceCharactersInRange:textRange.range withString:text];
     
-    _text = [_mutableText copy];
-    _textContainerView.text = _text;
+    _text = [_mutableAttrText copy];
+    _textContainerView.attrText = _text;
     _textContainerView.selectedTextRange = selectedTextRange;
 }
 
@@ -487,33 +492,27 @@
     if (markedTextRange.location != NSNotFound) {
         if (!markedText) {markedText = @"";}
         
-        [_mutableText replaceCharactersInRange:markedTextRange withString:markedText];
+        [_mutableAttrText replaceCharactersInRange:markedTextRange withString:markedText];
         markedTextRange.length = markedText.length;
         
     }
     
     else if(selectedTextRange.length>0)
     {
-        [_mutableText replaceCharactersInRange:selectedTextRange withString:markedText];
+        [_mutableAttrText replaceCharactersInRange:selectedTextRange withString:markedText];
         markedTextRange.location = selectedTextRange.location;
         markedTextRange.length = markedText.length;
     }
     else
     {
-        [_mutableText insertString:markedText atIndex:selectedTextRange.location];
+        [_mutableAttrText insertAttributedString:[[NSAttributedString alloc] initWithString:markedText] atIndex:selectedTextRange.location];
         markedTextRange.location = selectedTextRange.location;
         markedTextRange.length = markedText.length;
     }
     
-    selectedTextRange = NSMakeRange(selectedRange.location+markedTextRange.location, selectedRange.length);
+    selectedTextRange = NSMakeRange(markedTextRange.location+markedTextRange.length, selectedRange.length);
     
-    _text = [_mutableText copy];
-    _textContainerView.text = _text;
-    _textContainerView.selectedTextRange = selectedTextRange;
-    _textContainerView.markedTextRange = markedTextRange;
-    if ([self.delegate respondsToSelector:@selector(textViewDidChange:)]) {
-        [self.delegate textViewDidChange:self];
-    }
+    [self updateTextContainerViewWith:selectedTextRange markedTextRange:markedTextRange];
 }
 
 - (void)unmarkText
@@ -537,7 +536,7 @@
 
 - (UITextPosition *)endOfDocument
 {
-    YHETextPosition *textPosition = [YHETextPosition positionWithIndex:_mutableText.length];
+    YHETextPosition *textPosition = [YHETextPosition positionWithIndex:_mutableAttrText.length];
     return textPosition;
 }
 
@@ -740,7 +739,7 @@
 
 - (BOOL)hasText
 {
-    return (_mutableText.length>0);
+    return (_mutableAttrText.length>0);
 }
 
 - (void)insertText:(NSString *)text
@@ -754,7 +753,7 @@
             shouldChange = [self.delegate textView:self shouldChangeTextInRange:markedTextRange replacementText:text];
         }
         if (shouldChange) {
-            [_mutableText replaceCharactersInRange:markedTextRange withString:text];
+            [_mutableAttrText replaceCharactersInRange:markedTextRange withString:text];
             selectedTextRange.location = markedTextRange.location+text.length;
             selectedTextRange.length = 0;
             markedTextRange = NSMakeRange(NSNotFound, 0);
@@ -770,8 +769,8 @@
             shouldChange = [self.delegate textView:self shouldChangeTextInRange:markedTextRange replacementText:text];
         }
         if (shouldChange) {
-            [_mutableText replaceCharactersInRange:selectedTextRange withString:text];
-            selectedTextRange = NSMakeRange(MIN(_mutableText.length, selectedTextRange.location), 0);
+            [_mutableAttrText replaceCharactersInRange:selectedTextRange withString:text];
+            selectedTextRange = NSMakeRange(MIN(_mutableAttrText.length, selectedTextRange.location), 0);
         }
         else
         {
@@ -785,7 +784,7 @@
             shouldChange = [self.delegate textView:self shouldChangeTextInRange:markedTextRange replacementText:text];
         }
         if (shouldChange) {
-            [_mutableText insertString:text atIndex:selectedTextRange.location];
+            [_mutableAttrText insertAttributedString:[[NSAttributedString alloc] initWithString:text] atIndex:selectedTextRange.location];
             selectedTextRange.location += text.length;
         }
         else
@@ -794,14 +793,7 @@
         }
     }
     
-    _text = [_mutableText copy];
-    _textContainerView.text = _text;
-    
-    _textContainerView.selectedTextRange = selectedTextRange;
-    _textContainerView.markedTextRange = markedTextRange;
-    if ([self.delegate respondsToSelector:@selector(textViewDidChange:)]) {
-        [self.delegate textViewDidChange:self];
-    }
+    [self updateTextContainerViewWith:selectedTextRange markedTextRange:markedTextRange];
 }
 
 - (void)deleteBackward
@@ -816,7 +808,7 @@
             shouldChange = [self.delegate textView:self shouldChangeTextInRange:markedTextRange replacementText:@""];
         }
         if (shouldChange) {
-            [_mutableText deleteCharactersInRange:markedTextRange];
+            [_mutableAttrText deleteCharactersInRange:markedTextRange];
             selectedTextRange = NSMakeRange(markedTextRange.location, 0);
             markedTextRange = NSMakeRange(NSNotFound, 0);
         }
@@ -831,7 +823,7 @@
             shouldChange = [self.delegate textView:self shouldChangeTextInRange:selectedTextRange replacementText:@""];
         }
         if (shouldChange) {
-            [_mutableText deleteCharactersInRange:selectedTextRange];
+            [_mutableAttrText deleteCharactersInRange:selectedTextRange];
             selectedTextRange.length = 0;
         }
         else
@@ -848,7 +840,7 @@
         if (shouldChange) {
             selectedTextRange.location --;
             selectedTextRange.length = 1;
-            [_mutableText deleteCharactersInRange:selectedTextRange];
+            [_mutableAttrText deleteCharactersInRange:selectedTextRange];
             selectedTextRange.length = 0;
         }
         else
@@ -856,10 +848,15 @@
             return;
         }
     }
+    
+    [self updateTextContainerViewWith:selectedTextRange markedTextRange:markedTextRange];
 
+}
 
-    _text = [_mutableText copy];
-    _textContainerView.text = _text;
+- (void)updateTextContainerViewWith:(NSRange)selectedTextRange markedTextRange:(NSRange)markedTextRange
+{
+    _mutableAttrText = [self parserTextForDrawWithAttributedText:_mutableAttrText withSelectedTextRange:&selectedTextRange];
+    _textContainerView.attrText = _mutableAttrText;
     _textContainerView.selectedTextRange = selectedTextRange;
     _textContainerView.markedTextRange = markedTextRange;
     if ([self.delegate respondsToSelector:@selector(textViewDidChange:)]) {
@@ -894,6 +891,93 @@
         [self scrollRectToVisible:caretFrame  animated:YES];
     }
 }
+
+- (NSMutableAttributedString *)parserTextForDrawWithAttributedText:(NSMutableAttributedString *)attributeString withSelectedTextRange:(NSRange *)selectedTextRange;
+{
+    NSString *yohoEmotionPattern = self.regexDict[kRegexYohoEmotion];
+    if (!yohoEmotionPattern || yohoEmotionPattern.length == 0) {
+        return attributeString;
+    }
+    
+    NSError *error = nil;
+    //通过正则表达式匹配字符串
+    NSRegularExpression *yohoEmotionRegular = [NSRegularExpression regularExpressionWithPattern:yohoEmotionPattern options:NSRegularExpressionDotMatchesLineSeparators error:&error];
+    NSArray *checkingResults = [yohoEmotionRegular matchesInString:attributeString.string options:NSMatchingReportCompletion range:NSMakeRange(0,attributeString.length)];
+    //倒着替换，这样就不会使一次替换后range发生变化
+    for (int row = checkingResults.count-1;row>=0;row--) {
+        NSTextCheckingResult *checkingResult = checkingResults[row];
+        NSString *checkingStr = [attributeString.string substringWithRange:checkingResult.range];
+        checkingStr = [checkingStr substringWithRange:NSMakeRange(1, 2)];
+        BOOL shouldDrawEmotion = [self.delegate textView:self shouldDrawEmotionWithTag:checkingStr];
+        if (shouldDrawEmotion) {
+            CTRunDelegateRef runDelegate = [self runDelegateForImage:(__bridge void *)(checkingStr)];
+            //逻辑定义要求占位字符串长度与替换前字符串长度一致
+            NSMutableAttributedString *placeHolderAttributeStr = [[NSMutableAttributedString alloc] initWithString:@"." attributes:@{@"YHECustomEmotion": checkingStr}];
+            [placeHolderAttributeStr addAttribute:(__bridge NSString *)kCTRunDelegateAttributeName value:(id)CFBridgingRelease(runDelegate) range:NSMakeRange(0, placeHolderAttributeStr.length)];
+            [attributeString replaceCharactersInRange:checkingResult.range withAttributedString:placeHolderAttributeStr];
+            //变化选择的range
+            if (checkingResult.range.location+checkingResult.range.length-1<= selectedTextRange->location) {
+                selectedTextRange->location -= (checkingResult.range.length-placeHolderAttributeStr.length);
+            }
+        }
+    }
+    
+    return attributeString;
+}
+
+- (NSString *)reverseTextFromAttrText:(NSAttributedString *)subAttrText
+{
+    NSMutableString *subText = [[NSMutableString alloc] initWithString:@""];
+    NSRange effectiveRange = NSMakeRange(0, 0);
+    
+    while (NSMaxRange(effectiveRange)<subAttrText.length) {
+        NSRange range = NSMakeRange(NSMaxRange(effectiveRange), subAttrText.length-NSMaxRange(effectiveRange));
+        NSDictionary *dict = [subAttrText attributesAtIndex:range.location longestEffectiveRange:&effectiveRange inRange:range];
+        if ([dict.allKeys containsObject:@"YHECustomEmotion"]) {
+            [subText appendFormat:@"[%@]",dict[@"YHECustomEmotion"]];
+        }
+        else
+        {
+            [subText appendString:[subAttrText.string substringWithRange:effectiveRange]];
+        }
+    }
+    return subText;
+}
+
+#pragma mark - CTRunDelegateCallBack
+#pragma mark - 绘制自定义表情的几何回调
+- (CTRunDelegateRef)runDelegateForImage:(void *)refCon
+{
+    CTRunDelegateCallbacks imageCallBacks;
+    imageCallBacks.dealloc = RunDelegateDeallocCallBack;
+    imageCallBacks.version = kCTRunDelegateVersion1;
+    imageCallBacks.getAscent = RunDelegateGetAscentCallback;
+    imageCallBacks.getDescent = RunDelegateGetDescentCallback;
+    imageCallBacks.getWidth = RunDelegateGetWidthCallback;
+    CTRunDelegateRef runDelegate = CTRunDelegateCreate(&imageCallBacks,refCon);
+    return runDelegate;
+}
+
+void RunDelegateDeallocCallBack(void *refCon)
+{
+    
+}
+
+CGFloat RunDelegateGetAscentCallback(void *refCon)
+{
+    return 13.7f;
+}
+
+CGFloat RunDelegateGetDescentCallback(void *refCon)
+{
+    return 3.3f;
+}
+
+CGFloat RunDelegateGetWidthCallback(void *refCon)
+{
+    return 20.0f;
+}
+
 
 @end
 
