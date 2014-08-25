@@ -215,7 +215,7 @@
 
 - (void)longPress:(UILongPressGestureRecognizer *)longPress
 {
-    CGPoint pressPoint = [longPress locationInView:self];
+    CGPoint pressPoint = [longPress locationInView:self.window];
     //显示放大镜
     if (longPress.state == UIGestureRecognizerStateBegan || longPress.state == UIGestureRecognizerStateChanged) {
         [self moveMagnifierCaretToPoint:pressPoint];

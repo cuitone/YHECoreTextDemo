@@ -124,24 +124,36 @@
 
 - (void)drawRect:(CGRect)rect
 {
-    UIGraphicsBeginImageContext(self.magnifyToView.bounds.size);
-    [self.magnifyToView.layer renderInContext:UIGraphicsGetCurrentContext()];
-    UIImage *captureImage = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
+    CGFloat screenScale = [UIScreen mainScreen].scale;
     
-    CGImageRef captureImageRef = captureImage.CGImage;
-
     CGFloat scale = 1.2f;
     CGRect box = CGRectMake(ceilf(self.touchPoint.x - self.mask.size.width / scale / 2),
                             ceilf(self.touchPoint.y - self.mask.size.height / scale / 2),
                             ceilf(self.mask.size.width / scale),
                             ceilf(self.mask.size.height / scale));
     
-    CGImageRef subImage = CGImageCreateWithImageInRect(captureImageRef, box);
-    CGImageRef maskedImage = CGImageCreateWithMask(subImage, _maskRef);
 
+    UIGraphicsBeginImageContextWithOptions(box.size, YES, screenScale);
+    
     CGContextRef context = UIGraphicsGetCurrentContext();
+    CGContextSetFillColorWithColor(context, [UIColor whiteColor].CGColor);
+    UIRectFill(self.magnifyToView.bounds);
+    
+    CGContextSaveGState(context);
+    CGContextTranslateCTM(context, -CGRectGetMinX(box), -CGRectGetMinY(box));
+    [self.magnifyToView.layer renderInContext:context];
+    CGContextRestoreGState(context);
+    
+    UIImage *captureImage = UIGraphicsGetImageFromCurrentImageContext();
 
+    UIGraphicsEndImageContext();
+    
+    CGImageRef captureImageRef = captureImage.CGImage;
+
+    CGImageRef maskedImage = CGImageCreateWithMask(captureImageRef, _maskRef);
+
+    context = UIGraphicsGetCurrentContext();
+    
     CGAffineTransform xform = CGAffineTransformMake(1.0,  0.0,
                                                     0.0, -1.0,
                                                     0.0,  0.0);
@@ -151,10 +163,6 @@
     
     CGContextDrawImage(context, area, self.loupeFrame.CGImage);
     CGContextDrawImage(context, area, maskedImage);
-    CGContextDrawImage(context, area, self.loupe.CGImage);
-    
-    CGImageRelease(subImage);
-    CGImageRelease(maskedImage);
 }
 
 @end
