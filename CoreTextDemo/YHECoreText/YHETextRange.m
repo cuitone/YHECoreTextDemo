@@ -17,7 +17,7 @@
         return nil;
     }
     
-    YHETextRange *textRange = [[self alloc] init];
+    YHETextRange *textRange = [[YHETextRange alloc] init];
     textRange.range = range;
     return textRange;
 }

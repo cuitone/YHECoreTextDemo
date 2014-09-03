@@ -60,8 +60,6 @@
 
 - (NSInteger)closestIndexToPoint:(CGPoint)point;
 
-- (NSInteger)closestIndexForRichTextFromPoint:(CGPoint)point;
-
 /**
  *  选择两个区域交叉的区域
  */

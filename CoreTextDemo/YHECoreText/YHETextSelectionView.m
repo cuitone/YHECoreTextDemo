@@ -58,12 +58,12 @@
 
 - (void)initView
 {
-    self.leftGrabber = [[YHETextSelectionGrabber alloc] initWithFrame:CGRectMake(0, 0, 3, 17)];
-    [self.leftGrabber setDotDirection:YHESeletionGrabDotDirectionBottom];
+    self.leftGrabber = [[YHETextSelectionGrabber alloc] initWithFrame:CGRectMake(0, 0, 10, 17)];
+    [self.leftGrabber setDotDirection:YHESeletionGrabDotDirectionTop];
     [self addSubview:self.leftGrabber];
     
-    self.rightGrabber = [[YHETextSelectionGrabber alloc] initWithFrame:CGRectMake(0, 0, 3, 17)];
-    [self.rightGrabber setDotDirection:YHESeletionGrabDotDirectionTop];
+    self.rightGrabber = [[YHETextSelectionGrabber alloc] initWithFrame:CGRectMake(0, 0, 10, 17)];
+    [self.rightGrabber setDotDirection:YHESeletionGrabDotDirectionBottom];
     [self addSubview:self.rightGrabber];
     
     [self hideGarbers];

@@ -122,6 +122,29 @@
      }];
 }
 
+//- (CTParagraphStyleRef)parserTextParagraphStyle
+//{
+//    CTLineBreakMode lineBreakMode = kCTLineBreakByWordWrapping;
+//    CTTextAlignment textAlignment = kCTTextAlignmentLeft;
+//    CGFloat minLineHeight = 17.0;
+//    CGFloat maxLineHeight = 23.0;
+//    CGFloat minLineSpacing = 0.0;
+//    CGFloat maxLineSpacing = 0.0;
+//    
+//    CTParagraphStyleSetting styleSetting[] = {
+//        {kCTParagraphStyleSpecifierLineBreakMode,sizeof(CTLineBreakMode),(const void *)&lineBreakMode},
+//        {kCTParagraphStyleSpecifierAlignment,sizeof(CTTextAlignment),(const void *)&textAlignment},
+//        {kCTParagraphStyleSpecifierMinimumLineSpacing,sizeof(CGFloat),(const void *)&minLineSpacing},
+//        {kCTParagraphStyleSpecifierMaximumLineSpacing,sizeof(CGFloat),(const void *)&maxLineSpacing},
+//        {kCTParagraphStyleSpecifierMinimumLineHeight,sizeof(CGFloat),(const void *)&minLineHeight},
+//        {kCTParagraphStyleSpecifierMaximumLineHeight,sizeof(CGFloat),(const void *)&maxLineHeight}
+//    };
+//    
+//    CTParagraphStyleRef styleRef = CTParagraphStyleCreate(styleSetting, sizeof(styleSetting));
+//    return styleRef;
+//}
+
+
 - (void)drawRect:(CGRect)rect
 {
     CGFloat screenScale = [UIScreen mainScreen].scale;
@@ -163,6 +186,8 @@
     
     CGContextDrawImage(context, area, self.loupeFrame.CGImage);
     CGContextDrawImage(context, area, maskedImage);
+    
+    CGImageRelease(maskedImage);
 }
 
 @end

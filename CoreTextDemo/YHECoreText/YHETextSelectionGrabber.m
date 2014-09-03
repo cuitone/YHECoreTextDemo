@@ -8,23 +8,20 @@
 
 #import "YHETextSelectionGrabber.h"
 
-@interface YHESelectionBrabberDot : UIView
+@interface YHETextSelectionCaret : UIView
 
 @property (nonatomic,strong) UIBezierPath *path;
 
-@property (nonatomic,strong) UIImage *dotImage;
-
 @end
 
-@implementation YHESelectionBrabberDot
+@implementation YHETextSelectionCaret
 
 - (id)initWithFrame:(CGRect)frame
 {
     self = [super initWithFrame:frame];
     if (self) {
         self.backgroundColor = [UIColor clearColor];
-        self.path = [UIBezierPath bezierPathWithOvalInRect:self.bounds];
-        self.dotImage = [UIImage imageNamed:@"YHECoreTextView.bundle/kb-drag-dot.png"];
+        self.path = [UIBezierPath bezierPathWithOvalInRect:CGRectMake(0, 0, 10, 10)];
     }
     return self;
 }
@@ -33,16 +30,20 @@
 {
     [super drawRect:rect];
     CGContextRef context = UIGraphicsGetCurrentContext();
-    CGContextDrawImage(context, rect, self.dotImage.CGImage);
-//    CGContextRelease(context);
+    CGContextSetFillColorWithColor(context, [UIColor colorWithRed:19.0/255.0 green:84.0/255.0 blue:214.0/255.0 alpha:1.0].CGColor);
+    CGPoint center = CGPointMake(CGRectGetMidX(rect), CGRectGetMidY(rect));
+    CGRect drawRect = CGRectMake(center.x-1, 0, 2, CGRectGetHeight(rect));
+    CGContextAddPath(context, self.path.CGPath);
+    CGContextAddRect(context, drawRect);
+    CGContextDrawPath(context, kCGPathFill);
 }
 
 @end
 
 @interface YHETextSelectionGrabber ()
 
-@property (nonatomic,strong) YHESelectionBrabberDot *dotView;
-@property (nonatomic,strong) UIView *caretView;
+@property (nonatomic,strong) YHETextSelectionCaret *textSelectionCaret;
+
 
 @end
 
@@ -54,32 +55,41 @@
     if (self) {
         // Initialization code
         self.backgroundColor = [UIColor clearColor];
-        self.caretView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 2, 0)];
-        [self.caretView setBackgroundColor:[UIColor blueColor]];
-        [self addSubview:self.caretView];
-        
-        self.dotView = [[YHESelectionBrabberDot alloc] initWithFrame:CGRectMake(0, 0, 10, 10)];
-        [self addSubview:self.dotView];
+        self.textSelectionCaret = [[YHETextSelectionCaret alloc] initWithFrame:CGRectMake(0, 0, 10, 23)];
+
+        [self addSubview:self.textSelectionCaret];
+//        [self setBackgroundColor:[UIColor colorWithRed:1.0f green:0.0f blue:0.0f alpha:0.5]];
     }
     return self;
 }
 
-- (void)layoutSubviews
+- (void)setDotDirection:(YHESeletionGrabDotDirection)dotDirection
 {
-    [super layoutSubviews];
-    CGRect caretFrame = self.caretView.frame;
-    caretFrame.origin.x = (CGRectGetWidth(self.bounds) - CGRectGetWidth(caretFrame)) / 2;
-    caretFrame.size.height = CGRectGetHeight(self.bounds);
-    self.caretView.frame = caretFrame;
-    
-    CGRect dotFrame = self.dotView.frame;
-    if (self.dotDirection == YHESeletionGrabDotDirectionTop) {
-        dotFrame.origin = CGPointMake((CGRectGetWidth(self.bounds) - CGRectGetWidth(dotFrame)) / 2, -CGRectGetHeight(dotFrame)+CGRectGetHeight(self.dotView.bounds)/2);
-    } else {
-        dotFrame.origin = CGPointMake((CGRectGetWidth(self.bounds) - CGRectGetWidth(dotFrame)) / 2, CGRectGetHeight(self.bounds)-CGRectGetHeight(self.dotView.bounds)/2);
+    _dotDirection = dotDirection;
+    if (_dotDirection == YHESeletionGrabDotDirectionTop) {
+        [self.textSelectionCaret setTransform:CGAffineTransformRotate(CGAffineTransformIdentity, -M_PI)];
     }
-    self.dotView.frame = dotFrame;
-//    [self.dotView setNeedsDisplay];
+
+
+}
+
+- (void)setFrame:(CGRect)frame
+{
+    CGRect newFrame = CGRectZero;
+    
+    CGPoint newCenter = CGPointMake(CGRectGetMidX(frame), CGRectGetMidY(frame));
+    if (_dotDirection == YHESeletionGrabDotDirectionTop) {
+        newFrame = CGRectMake(newCenter.x-27, newCenter.y - 7, 30, 23);
+        [super setFrame:newFrame];
+        [self.textSelectionCaret setCenter:CGPointMake(CGRectGetWidth(newFrame)-CGRectGetWidth(self.textSelectionCaret.bounds)/2, CGRectGetHeight(self.textSelectionCaret.bounds)/2)];
+
+    }
+    else{
+        newFrame = CGRectMake(newCenter.x-8, newCenter.y - 16, 30, 23);
+        [super setFrame:newFrame];
+        [self.textSelectionCaret setCenter:CGPointMake(CGRectGetWidth(self.textSelectionCaret.bounds)/2, CGRectGetHeight(self.textSelectionCaret.bounds)/2)];
+    }
+
 }
 
 @end

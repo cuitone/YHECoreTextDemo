@@ -24,7 +24,7 @@ static const NSTimeInterval BlinkRate = 0.5;
     self = [super initWithFrame:frame];
     if (self) {
         // Initialization code
-        self.backgroundColor = [UIColor blueColor];
+        self.backgroundColor = [UIColor colorWithRed:19.0/255.0 green:84.0/255.0 blue:214.0/255.0 alpha:1.0];
     }
     return self;
 }
@@ -57,6 +57,12 @@ static const NSTimeInterval BlinkRate = 0.5;
 - (void)dealloc
 {
     [_blinkTimer invalidate];
+}
+
+- (void)setFrame:(CGRect)frame
+{
+    CGRect newFrame = CGRectMake(CGRectGetMinX(frame), CGRectGetMinY(frame), 2.0, CGRectGetHeight(frame));
+    [super setFrame:newFrame];
 }
 
 @end

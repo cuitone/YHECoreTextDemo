@@ -62,7 +62,6 @@
 
 - (void)initView
 {
-    [self setBackgroundColor:[UIColor greenColor]];
     _textContainerView = [[YHETextContainerView alloc] initWithFrame:CGRectMake(0, 0, self.frame.size.width, 17)];
     [_textContainerView setAutoresizingMask:UIViewAutoresizingFlexibleWidth];
     [self addSubview:_textContainerView];
@@ -132,7 +131,12 @@
             _textContainerView.editing = YES;
         }
     }
-    return [super becomeFirstResponder];
+    
+    BOOL success = [super becomeFirstResponder];
+    if ([self.delegate respondsToSelector:@selector(textViewDidBeginEditing:)]) {
+        [self.delegate textViewDidBeginEditing:self];
+    }
+    return success;
 }
 
 #pragma makr - Gesture Recognizer
@@ -140,32 +144,14 @@
 - (void)tap:(UITapGestureRecognizer *)tap
 {
     [self hideEditingMenu];
-    if (self.isFirstResponder) {
-        [self.inputDelegate selectionWillChange:self];
-        
-        NSInteger index = [_textContainerView closestIndexToPoint:[tap locationInView:_textContainerView]];
-        //点击屏幕后使markedTextRange.location＝NSNotFound,这样输入汉字的时候就不会从起始点开始了
-        _textContainerView.markedTextRange = NSMakeRange(NSNotFound, 0);
-        _textContainerView.selectedTextRange = NSMakeRange(index, 0);
-        [_textContainerView setEditing:YES];
-        [self.inputDelegate selectionDidChange:self];
-    }
-    else
-    {
+    if (!self.isFirstResponder) {
         [self becomeFirstResponder];
-        _textContainerView.editing = YES;
-        
-        NSInteger index = [_textContainerView closestIndexToPoint:[tap locationInView:_textContainerView]];
-        //点击屏幕后使markedTextRange.location＝NSNotFound,这样输入汉字的时候就不会从起始点开始了
-        _textContainerView.markedTextRange = NSMakeRange(NSNotFound, 0);
-        _textContainerView.selectedTextRange = NSMakeRange(index, 0);
-        [_textContainerView setEditing:YES];
-            
-        if ([self.delegate respondsToSelector:@selector(textViewDidBeginEditing:)]) {
-            [self.delegate textViewDidBeginEditing:self];
-        }
-        
     }
+    
+    NSInteger index = [_textContainerView closestIndexToPoint:[tap locationInView:_textContainerView]];
+    //点击屏幕后使markedTextRange.location＝NSNotFound,这样输入汉字的时候就不会从起始点开始了
+    [self updateTextContainerViewWith:NSMakeRange(index, 0) markedTextRange:NSMakeRange(NSNotFound, 0)];
+    [_textContainerView setEditing:YES];
 }
 
 - (void)grabSelectionGesture:(UIPanGestureRecognizer *)grabGesture
@@ -176,8 +162,14 @@
     BOOL isStartGesture = ([grabGesture isEqual:startGrabGesture]);
     
     if (grabGesture.state == UIGestureRecognizerStateBegan || grabGesture.state == UIGestureRecognizerStateChanged) {
+        
+        CGPoint grabPoint = [grabGesture locationInView:self.window];
+        [self moveMagnifierCaretToPoint:grabPoint];
+        
+        [self hideEditingMenu];
+        [self.inputDelegate selectionWillChange:self];
         if (isStartGesture) {
-            NSInteger index = [_textContainerView closestIndexForRichTextFromPoint:[grabGesture locationInView:_textContainerView]];
+            NSInteger index = [_textContainerView closestIndexToPoint:[grabGesture locationInView:_textContainerView]];
             //range的length是NSUInteger,所以要类型转换
             NSInteger length = selectedTextRange.length;
             length += selectedTextRange.location - index;
@@ -188,7 +180,7 @@
         }
         else
         {
-            NSInteger index = [_textContainerView closestIndexForRichTextFromPoint:[grabGesture locationInView:_textContainerView]];
+            NSInteger index = [_textContainerView closestIndexToPoint:[grabGesture locationInView:_textContainerView]];
             //range的length是NSUInteger,所以要类型转换
             NSInteger length = index - selectedTextRange.location;
             if (length<=0) { return; }
@@ -198,10 +190,11 @@
                 _textContainerView.selectedTextRange = selectedTextRange;
             }
         }
-        
+        [self.inputDelegate selectionDidChange:self];
     }
     else if(grabGesture.state == UIGestureRecognizerStateEnded || grabGesture.state == UIGestureRecognizerStateCancelled)
     {
+        [self hideMagnifierCaret];
         if (_textContainerView.isEditing && _textContainerView.selectedTextRange.length > 0) {
             [self showEditingMenu];
         }
@@ -216,9 +209,19 @@
 - (void)longPress:(UILongPressGestureRecognizer *)longPress
 {
     CGPoint pressPoint = [longPress locationInView:self.window];
+    NSRange selectedTextRange = _textContainerView.selectedTextRange;
     //显示放大镜
     if (longPress.state == UIGestureRecognizerStateBegan || longPress.state == UIGestureRecognizerStateChanged) {
+        [self hideEditingMenu];
         [self moveMagnifierCaretToPoint:pressPoint];
+        
+        NSInteger index = [_textContainerView closestIndexToPoint:[longPress locationInView:_textContainerView]];
+        //range的length是NSUInteger,所以要类型转换
+        selectedTextRange.location = MIN(index,_mutableAttrText.length);
+        selectedTextRange.length = 0;
+        if (!NSEqualRanges(_textContainerView.selectedTextRange, selectedTextRange)) {
+            _textContainerView.selectedTextRange = selectedTextRange;
+        }
     }
     //显示选择，全选，粘贴等操作选项
     else if(longPress.state == UIGestureRecognizerStateEnded)
@@ -277,10 +280,10 @@
     if (action == @selector(paste:) && _textContainerView.isEditing && [[UIPasteboard generalPasteboard] string]) {
         return YES;
     }
-    if (action == @selector(select:) && self.text.length > 0 && selectTextRange.length == 0) {
+    if (action == @selector(select:) && _mutableAttrText.length > 0 && selectTextRange.length == 0) {
         return YES;
     }
-    if (action == @selector(selectAll:) && self.text.length > 0 && selectTextRange.length < self.text.length) {
+    if (action == @selector(selectAll:) && _mutableAttrText.length > 0 && selectTextRange.length < _mutableAttrText.length) {
         return YES;
     }
     
@@ -324,11 +327,13 @@
     CGPoint center = _textContainerView.caretView.center;
     YHETextRange *caretRange = (YHETextRange *)[self characterRangeAtPoint:center];
     _textContainerView.selectedTextRange = caretRange.range;
+    [self showEditingMenu];
 }
 
 - (void)selectAll:(id)sender
 {
     _textContainerView.selectedTextRange = NSMakeRange(0, _mutableAttrText.length);
+    [self showEditingMenu];
 }
 
 #pragma mark - 属性存取器重写
@@ -338,16 +343,10 @@
     if (_text != text) {
         _text = [text copy];
         _mutableAttrText = [[NSMutableAttributedString alloc] initWithString:text attributes:nil];
-        NSRange startRange = NSMakeRange(0, _mutableAttrText.length);
-        _mutableAttrText = [self parserTextForDrawWithAttributedText:_mutableAttrText withSelectedTextRange:&startRange];
-        _textContainerView.attrText = _mutableAttrText;
-        
         NSRange markedTextRange = NSMakeRange(NSNotFound, 0);
         NSRange selectedTextRange = NSMakeRange(_mutableAttrText.length, 0);
-        _textContainerView.selectedTextRange = selectedTextRange;
-        _textContainerView.markedTextRange = markedTextRange;
-
         //在外部设置文本时要根据文本变更选择的location
+        [self updateTextContainerViewWith:selectedTextRange markedTextRange:markedTextRange];
     }
 }
 
@@ -406,6 +405,14 @@
 - (NSString *)textInRange:(UITextRange *)range
 {
     YHETextRange *textRange = (YHETextRange *)range;
+    
+    if (textRange.range.location == NSNotFound) {
+        return nil;
+    }
+    if (_mutableAttrText.length < NSMaxRange(textRange.range)) {
+        return nil;
+    }
+    
     return [_mutableAttrText.string substringWithRange:textRange.range];
 }
 
@@ -414,6 +421,7 @@
 {
     YHETextRange *textRange = (YHETextRange *)range;
     NSRange selectedTextRange = _textContainerView.selectedTextRange;
+    NSRange markedTextRange = _textContainerView.markedTextRange;
     //如果替换文本在选择光标的前面，重新计算新的选择位置使光标保持在最后面
     if ((textRange.range.location+textRange.range.length) <= selectedTextRange.location) {
         //比如选择了三个字符，替换成1个字符，那么textRange.range.length - text.length=2,选择的起始位置向前移动了两个，
@@ -424,10 +432,7 @@
     }
     
     [_mutableAttrText replaceCharactersInRange:textRange.range withString:text];
-    
-    _text = [_mutableAttrText copy];
-    _textContainerView.attrText = _text;
-    _textContainerView.selectedTextRange = selectedTextRange;
+    [self updateTextContainerViewWith:selectedTextRange markedTextRange:markedTextRange];
 }
 
 
@@ -583,7 +588,7 @@
     }
     
     newPosition = MAX(newPosition, 0);
-    newPosition = MIN(newPosition,_text.length);
+    newPosition = MIN(newPosition,_mutableAttrText.length);
     
     return [YHETextPosition positionWithIndex:newPosition];
 }
@@ -708,7 +713,7 @@
 
 - (UITextRange *)characterRangeAtPoint:(CGPoint)point
 {
-    NSInteger index = [_textContainerView closestIndexForRichTextFromPoint:point];
+    NSInteger index = [_textContainerView closestIndexToPoint:point];
     if (index == NSNotFound) {
         return nil;
     }
@@ -717,7 +722,7 @@
     
     index = MAX(0, index);
     
-    index = MIN(self.text.length-1, index);
+    index = MIN(_mutableAttrText.length-1, index);
     
     YHETextRange *textRange = [YHETextRange indexedRangeWithRange:NSMakeRange(index, length)];
     
@@ -883,7 +888,7 @@
 
 - (void)containerViewDidChangeFrame:(YHETextContainerView *)containerView
 {
-    CGFloat contentHeight = MAX(self.contentSize.height, _textContainerView.frame.size.height);
+    CGFloat contentHeight = _textContainerView.frame.size.height;
     if (contentHeight!=self.contentSize.height) {
         self.contentSize =  containerView.frame.size;
         CGRect caretFrame = _textContainerView.caretView.frame;
@@ -892,6 +897,7 @@
     }
 }
 
+#pragma mark - 格式化字符串解析
 - (NSMutableAttributedString *)parserTextForDrawWithAttributedText:(NSMutableAttributedString *)attributeString withSelectedTextRange:(NSRange *)selectedTextRange;
 {
     NSString *yohoEmotionPattern = self.regexDict[kRegexYohoEmotion];
@@ -975,7 +981,7 @@ CGFloat RunDelegateGetDescentCallback(void *refCon)
 
 CGFloat RunDelegateGetWidthCallback(void *refCon)
 {
-    return 20.0f;
+    return 17.0f;
 }
 
 

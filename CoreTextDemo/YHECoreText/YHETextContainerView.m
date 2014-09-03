@@ -11,8 +11,6 @@
 
 #pragma mark - YHETextContainerView
 
-NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
-
 
 
 @implementation YHETextContainerView
@@ -27,6 +25,19 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
     return self;
 }
 
+- (void)dealloc
+{
+    if (_ctFrameSetter != NULL) {
+        CFRelease(_ctFrameSetter);
+        _ctFrameSetter = NULL;
+    }
+    
+    if (_ctFrame != NULL) {
+        CFRelease(_ctFrame);
+        _ctFrame = NULL;
+    }
+}
+
 - (void)initView
 {
     self.layer.geometryFlipped = YES;
@@ -34,7 +45,7 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
     self.attrText = [[NSMutableAttributedString alloc] init];
     self.font = [UIFont systemFontOfSize:17.0f];
     [self setBackgroundColor:[UIColor clearColor]];
-    self.markColor = [UIColor blueColor];
+    self.markColor = [UIColor colorWithRed:19.0/255.0 green:84.0/255.0 blue:214.0/255.0 alpha:1.0];
     self.attributes = [[NSMutableDictionary alloc] init];
     [self.attributes setObject:_font forKey:NSFontAttributeName];
     _caretView = [[YHECaretView alloc] initWithFrame:CGRectZero];
@@ -183,9 +194,9 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
             if (image) {
                 CGRect imageDrawRect;
                 imageDrawRect.size = image.size;
-                imageDrawRect.size = CGSizeMake(20, 20);
+                imageDrawRect.size = CGSizeMake(16, 16);
                 imageDrawRect.origin.x = runRect.origin.x + lineOrigin.x;
-                imageDrawRect.origin.y = lineOrigin.y-5;
+                imageDrawRect.origin.y = lineOrigin.y-3;
                 CGContextDrawImage(context, imageDrawRect, image.CGImage);
             }
         }
@@ -231,12 +242,15 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
     
     [self setNeedsDisplay];
     [self clearPreviousLayoutInfomation];
-    
+
     NSMutableAttributedString *attributeString = [[NSMutableAttributedString alloc] initWithAttributedString:_attrText];
     [attributeString addAttributes:_attributes range:NSMakeRange(0, _attrText.length)];
-    
+    CTParagraphStyleRef paragraphStyle = [self parserTextParagraphStyle];
+    [attributeString addAttribute:(__bridge NSString *)kCTParagraphStyleAttributeName value:(__bridge id)paragraphStyle range:NSMakeRange(0, attributeString.length)];
+    CFRelease(paragraphStyle);
     if (_ctFrameSetter) {
         CFRelease(_ctFrameSetter);
+        _ctFrameSetter = NULL;
     }
 
     _ctFrameSetter = CTFramesetterCreateWithAttributedString((__bridge CFAttributedStringRef)attributeString);
@@ -290,8 +304,31 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
     UIBezierPath *path = [UIBezierPath bezierPathWithRect:self.bounds];
     if (_ctFrame != NULL) {
         CFRelease(_ctFrame);
+        _ctFrame = NULL;
     }
     _ctFrame = CTFramesetterCreateFrame(_ctFrameSetter, CFRangeMake(0, 0), [path CGPath], NULL);
+}
+
+- (CTParagraphStyleRef)parserTextParagraphStyle
+{
+    CTLineBreakMode lineBreakMode = kCTLineBreakByCharWrapping;
+    CTTextAlignment textAlignment = kCTTextAlignmentLeft;
+    CGFloat minLineHeight = 17.0;
+    CGFloat maxLineHeight = 23.0;
+    CGFloat minLineSpacing = 0.0;
+    CGFloat maxLineSpacing = 0.0;
+    
+    CTParagraphStyleSetting styleSetting[] = {
+        {kCTParagraphStyleSpecifierLineBreakMode,sizeof(CTLineBreakMode),(const void *)&lineBreakMode},
+        {kCTParagraphStyleSpecifierAlignment,sizeof(CTTextAlignment),(const void *)&textAlignment},
+        {kCTParagraphStyleSpecifierMinimumLineSpacing,sizeof(CGFloat),(const void *)&minLineSpacing},
+        {kCTParagraphStyleSpecifierMaximumLineSpacing,sizeof(CGFloat),(const void *)&maxLineSpacing},
+        {kCTParagraphStyleSpecifierMinimumLineHeight,sizeof(CGFloat),(const void *)&minLineHeight},
+        {kCTParagraphStyleSpecifierMaximumLineHeight,sizeof(CGFloat),(const void *)&maxLineHeight}
+    };
+    
+    CTParagraphStyleRef styleRef = CTParagraphStyleCreate(styleSetting, 6);
+    return styleRef;
 }
 
 #pragma mark -
@@ -377,33 +414,12 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
     CGPoint lineOrigins[linesCount];
     CTFrameGetLineOrigins(_ctFrame, CFRangeMake(0, 0), lineOrigins);
     
-    // 特殊情况，插入点正好在最后并要开始新的一行
-    if (index == self.attrText.length && [self.attrText.string characterAtIndex:(index - 1)] == '\n') {
-        CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex(lines, linesCount -1);
-        CFRange range = CTLineGetStringRange(line);
-
-        CGPoint lineOrigin = lineOrigins[linesCount-1];
-        CGFloat ascent, descent;
-        CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
-        CTFrameGetLineOrigins(_ctFrame, CFRangeMake(linesCount - 1, 0), &lineOrigin);
-        
-        CGFloat xPos = CTLineGetOffsetForStringIndex(line, range.location, NULL);
-        return CGRectMake(xPos, lineOrigin.y - descent, 3, ascent + descent);
-    }
-    
-    // 正常情况，插入点在文本中间
-    // 如果选中位置的前一个字符串是回车符，计算加1的位置
-    if (index>0 && [self.attrText.string characterAtIndex:(index - 1)] == '\n') {
-        index += 1;
-    }
-    
     for (CFIndex linesIndex = 0; linesIndex < linesCount; linesIndex++) {
         
         CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex(lines, linesIndex);
         CFRange range = CTLineGetStringRange(line);
-//        NSInteger localIndex = index - range.location;
         //计算索引是不是在本行
-        if (index >= range.location && index < range.location + range.length) {
+        if (index >= range.location && index <= range.location + range.length) {
             
             CGPoint lineOrigin = lineOrigins[linesIndex];
             
@@ -412,6 +428,13 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
             
 			// index is in the range for this line.
             CGFloat xPos = CTLineGetOffsetForStringIndex(line, index, NULL);
+            
+            //如果刚好前面是一个换行符，那么应该置光标于下一行的行首
+            if ([self.attrText.string characterAtIndex:(index - 1)] == '\n'){
+                // Place point after last line, including any font leading spacing if applicable.
+                xPos = lineOrigin.x;
+                lineOrigin.y -= self.font.leading;
+            }
 
 			// Make a small "caret" rect at the index position.
             return CGRectMake(xPos, lineOrigin.y - descent, 3, ascent + descent);
@@ -439,29 +462,17 @@ NSString *const kRegexYohoEmotion = @"kRegexYohoEmotion";
 			// This line origin is closest to the y-coordinate of our point; now look for the closest string index in this line.
             
             CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex(lines, linesIndex);
-            return CTLineGetStringIndexForPosition(line, point);
+            NSInteger stringIndex = CTLineGetStringIndexForPosition(line, point);
+            //如果计算出来的光标位置前面一个刚好的换行符，要向前移一格
+            if ([self.attrText.string characterAtIndex:stringIndex-1] == '\n')
+            {
+                stringIndex -=1;
+            }
+            return stringIndex;
         }
     }
     
     return  self.attrText.length;
-}
-
-- (NSInteger)closestIndexForRichTextFromPoint:(CGPoint)point
-{
-    NSInteger index = [self closestIndexToPoint:point];
-    NSString *yohoEmotionPattern = self.regexDict[kRegexYohoEmotion];
-    if (yohoEmotionPattern) {
-        NSError *error = nil;
-        //通过正则表达式匹配字符串
-        NSRegularExpression *yohoEmotionRegular = [NSRegularExpression regularExpressionWithPattern:yohoEmotionPattern options:NSRegularExpressionDotMatchesLineSeparators error:&error];
-        NSArray *checkingResults = [yohoEmotionRegular matchesInString:_attrText.string options:NSMatchingReportCompletion range:NSMakeRange(0,_attrText.length)];
-        for (NSTextCheckingResult *textCheckingResult in checkingResults) {
-            if ((index>textCheckingResult.range.location)&&(index<textCheckingResult.range.location+textCheckingResult.range.length)) {
-                index = textCheckingResult.range.location + textCheckingResult.range.length;
-            }
-        }
-    }
-    return index;
 }
 
 #pragma mark -
